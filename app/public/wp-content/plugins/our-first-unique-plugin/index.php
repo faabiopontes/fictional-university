@@ -6,6 +6,8 @@
     Version: 1.0
     Author: Fabio Pontes
     Author URI: https://github.com/faabiopontes
+    Text Domain: wcpdomain
+    Domain Path: /languages
 */
 
 class WordCountAndTimePlugin
@@ -17,6 +19,11 @@ class WordCountAndTimePlugin
         add_action('admin_menu', [$this, 'adminPage']);
         add_action('admin_init', [$this, 'settings']);
         add_filter('the_content', [$this, 'ifWrap']);
+        add_action('init', [$this, 'languages']);
+    }
+
+    function languages() {
+        load_plugin_textdomain('wcpdomain', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     function ifWrap($content)
@@ -44,7 +51,7 @@ class WordCountAndTimePlugin
         }
 
         if (get_option('wcp_wordcount', '1')) {
-            $html .= 'This post has ' . $wordCount . ' words.<br>';
+            $html .= esc_html__('This post has','wcpdomain') . ' ' . $wordCount . ' ' . esc_html__('words','wcpdomain') . '.<br>';
         }
 
         if (get_option('wcp_readtime', '1')) {
@@ -115,7 +122,7 @@ class WordCountAndTimePlugin
 
     function adminPage($adminMenu)
     {
-        add_options_page('Word Count Settings', 'Word Count', 'manage_options', $this->menu_slug, [$this, 'ourHTML']);
+        add_options_page('Word Count Settings', esc_html__('Word Count', 'wcpdomain'), 'manage_options', $this->menu_slug, [$this, 'ourHTML']);
     }
 
     function ourHTML()
