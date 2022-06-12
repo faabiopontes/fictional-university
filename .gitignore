@@ -2,3 +2,5 @@ logs
 notes.txt
 app/sql
 app/public/wp-content/languages/pt_BR-*.json
+node_modules
+build
