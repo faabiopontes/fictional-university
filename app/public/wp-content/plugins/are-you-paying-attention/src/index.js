@@ -7,7 +7,6 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
         grassColor: { type: "string" }
     },
     edit: function (props) {
-        // This return is what is shown on admin when page is being editted
         const updateSkyColor = (event) => {
             props.setAttributes({ skyColor: event.target.value });
         }
@@ -22,9 +21,8 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
         )
     },
     save: function (props) {
-        // This return is what is saved on the database and shown when the post is open
         return (
-            <p>Today the sky is {props.attributes.skyColor} and the grass is {props.attributes.grassColor}</p>
+            <p>Today the sky is completely {props.attributes.skyColor} and the grass is {props.attributes.grassColor}</p>
         )
     }
 });
