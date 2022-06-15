@@ -21,8 +21,6 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
         )
     },
     save: function (props) {
-        return (
-            <p>Today the sky is completely {props.attributes.skyColor} and the grass is {props.attributes.grassColor}</p>
-        )
-    }
+        return null;
+    },
 });
