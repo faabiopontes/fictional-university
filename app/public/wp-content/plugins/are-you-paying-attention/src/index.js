@@ -11,7 +11,7 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
     },
     edit: EditComponent,
     save: function (props) {
-        return nul;;;ll;
+        return null;
     },
 });
 
@@ -32,11 +32,13 @@ function EditComponent(props) {
             {props.attributes.answers.map((answer, index) => (
                 <Flex>
                     <FlexBlock>
-                        <TextControl value={answer} onChange={newValue => {
-                            const newAnswers = props.attributes.answers.concat([]);
-                            newAnswers[index] = newValue;
-                            props.setAttributes({ answers: newAnswers });
-                        }}></TextControl>
+                        <TextControl
+                            autoFocus={answer == undefined}
+                            value={answer} onChange={newValue => {
+                                const newAnswers = props.attributes.answers.concat([]);
+                                newAnswers[index] = newValue;
+                                props.setAttributes({ answers: newAnswers });
+                            }}></TextControl>
                     </FlexBlock>
                     <FlexItem>
                         <Button>
@@ -49,7 +51,7 @@ function EditComponent(props) {
                 </Flex>
             ))}
             <Button isPrimary onClick={() => {
-                const newAnswers = props.attributes.answers.concat([""]);
+                const newAnswers = props.attributes.answers.concat([undefined]);
                 props.setAttributes({ answers: newAnswers });
             }}>Add another answer</Button>
         </div>
