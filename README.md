@@ -7,3 +7,7 @@ These notes are for course [Become a WordPress Developer: Unlocking Power With C
 - We can get rid of this "break" error in two ways:
     1. Using `deprecated` attribute which is a array of objects that are no longer valid, so if our `save` function is going to change we save the previous content of it inside this `deprecated` attribute
     2. Making the `save` function return null, and making the parse through PHP, that way our block is never going to "break", because there's no change if the return of the `save` function is always the same
+
+## wp_enqueue_script
+- Our JS script was being interpreted before the HTML of the post was in the page
+- The last param of `wp_enqueue_script` is related to if the script is gonna be loaded on `head` or `body` tag
