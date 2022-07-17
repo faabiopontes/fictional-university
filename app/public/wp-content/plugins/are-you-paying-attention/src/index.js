@@ -1,12 +1,14 @@
 import "./index.scss";
-import { TextControl, Flex, FlexBlock, FlexItem, Button, Icon } from "@wordpress/components";
+import { TextControl, Flex, FlexBlock, FlexItem, Button, Icon, PanelBody, PanelRow, ColorPicker } from "@wordpress/components";
+import { InspectorControls } from "@wordpress/block-editor";
+import { ChromePicker } from "react-color";
 
 // IIFE so we have scoped variables
 // TODO: Show info to user about why the post can't be updated when it's locked
 (function () {
     let locked = false;
 
-    wp.data.subscribe(function() {
+    wp.data.subscribe(function () {
         const results = wp.data.select("core/block-editor").getBlocks().filter(block => {
             return block.name == "ourplugin/are-you-paying-attention" && block.attributes.correctAnswer === undefined;
         });
@@ -30,6 +32,7 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
         question: { type: "string" },
         answers: { type: "array", default: [""] },
         correctAnswer: { type: "number", default: undefined },
+        bgColor: { type: "string", default: "#EBEBEB" }
     },
     edit: EditComponent,
     save: function (props) {
@@ -44,7 +47,7 @@ function EditComponent(props) {
 
     const deleteAnswer = (indexToDelete) => {
         const newAnswers = props.attributes.answers.filter((_, index) => index !== indexToDelete);
-        
+
         if (indexToDelete == props.attributes.correctAnswer) {
             props.setAttributes({ correctAnswer: undefined });
         }
@@ -57,7 +60,12 @@ function EditComponent(props) {
     }
 
     return (
-        <div className="paying-attention-edit-block">
+        <div className="paying-attention-edit-block" style={{ backgroundColor: props.attributes.bgColor }}>
+            <InspectorControls>
+                <PanelBody title="Background Color" initialOpen={true}>
+                    <ChromePicker color={props.attributes.bgColor} onChangeComplete={({ hex }) => props.setAttributes({ bgColor: hex })} disableAlpha={true} />
+                </PanelBody>
+            </InspectorControls>
             <TextControl label="Question:" value={props.attributes.question} onChange={updateQuestion} style={{ fontSize: '20px' }} />
             <p style={{ fontSize: '13px', margin: '20px 0 8px' }}>Answers:</p>
             {props.attributes.answers.map((answer, index) => (

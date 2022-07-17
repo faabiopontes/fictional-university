@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/faabiopontes/fictional-university#readme",
   "dependencies": {
-    "@wordpress/scripts": "^23.2.0"
+    "@wordpress/scripts": "^23.2.0",
+    "react-color": "^2.19.3"
   }
 }
