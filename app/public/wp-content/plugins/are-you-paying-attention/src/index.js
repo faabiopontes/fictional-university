@@ -1,6 +1,6 @@
 import "./index.scss";
-import { TextControl, Flex, FlexBlock, FlexItem, Button, Icon, PanelBody, PanelRow, ColorPicker } from "@wordpress/components";
-import { InspectorControls } from "@wordpress/block-editor";
+import { TextControl, Flex, FlexBlock, FlexItem, Button, Icon, PanelBody, PanelRow } from "@wordpress/components";
+import { InspectorControls, BlockControls, AlignmentToolbar } from "@wordpress/block-editor";
 import { ChromePicker } from "react-color";
 
 // IIFE so we have scoped variables
@@ -32,7 +32,18 @@ wp.blocks.registerBlockType("ourplugin/are-you-paying-attention", {
         question: { type: "string" },
         answers: { type: "array", default: [""] },
         correctAnswer: { type: "number", default: undefined },
-        bgColor: { type: "string", default: "#EBEBEB" }
+        bgColor: { type: "string", default: "#EBEBEB" },
+        theAlignment: { type: "string", default: "left" },
+    },
+    description: "Give your audience a chance to prove their comprehension of something",
+    example: {
+        attributes: {
+            question: "What is my name?",
+            answers: ["Ronron", "Sofia", "Fábio", "Luana"] ,
+            correctAnswer: 2,
+            bgColor: "#B0C4DE",
+            theAlignment: "center",
+        }
     },
     edit: EditComponent,
     save: function (props) {
@@ -61,9 +72,14 @@ function EditComponent(props) {
 
     return (
         <div className="paying-attention-edit-block" style={{ backgroundColor: props.attributes.bgColor }}>
+            <BlockControls>
+                <AlignmentToolbar value={props.attributes.theAlignment} onChange={newAlignment => props.setAttributes({ theAlignment: newAlignment })} />
+            </BlockControls>
             <InspectorControls>
                 <PanelBody title="Background Color" initialOpen={true}>
-                    <ChromePicker color={props.attributes.bgColor} onChangeComplete={({ hex }) => props.setAttributes({ bgColor: hex })} disableAlpha={true} />
+                    <PanelRow>
+                        <ChromePicker color={props.attributes.bgColor} onChangeComplete={({ hex }) => props.setAttributes({ bgColor: hex })} disableAlpha={true} />
+                    </PanelRow>
                 </PanelBody>
             </InspectorControls>
             <TextControl label="Question:" value={props.attributes.question} onChange={updateQuestion} style={{ fontSize: '20px' }} />
