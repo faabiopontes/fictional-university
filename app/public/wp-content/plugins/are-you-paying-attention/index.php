@@ -16,11 +16,7 @@ class AreYouPayingAttention {
     }
 
     function adminAssets() {
-        wp_register_style('quizeditcss', plugin_dir_url(__FILE__) . 'build/index.css');
-        wp_register_script('ournewblocktype', plugin_dir_url(__FILE__) . 'build/index.js', ['wp-blocks', 'wp-element', 'wp-editor']);
-        register_block_type('ourplugin/are-you-paying-attention', [
-            'editor_script' => 'ournewblocktype',
-            'editor_style' => 'quizeditcss',
+        register_block_type(__DIR__, [
             'render_callback' => [$this, 'theHTML']
         ]);
     }
@@ -28,7 +24,6 @@ class AreYouPayingAttention {
     function theHTML($attributes) {
         if(!is_admin()) {
             wp_enqueue_script('attentionFrontend', plugin_dir_url(__FILE__) . 'build/frontend.js', ['wp-element'], null, true);
-            wp_enqueue_style('attentionFrontendStyles', plugin_dir_url(__FILE__) . 'build/frontend.css');
         }
 
         ob_start() ?>

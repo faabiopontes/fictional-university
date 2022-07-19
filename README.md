@@ -18,3 +18,11 @@ These notes are for course [Become a WordPress Developer: Unlocking Power With C
 ## Want More?
 
 - The WordPress documentation on [this link](https://developer.wordpress.org/block-editor/how-to-guides/block-tutorial/block-controls-toolbar-and-sidebar/) can help you see more features for sidebar or controls related to our blocks
+
+## block.json
+
+- This is the official way of registering block types
+- Using it we can point to our plugin assets
+- The `block.json` file should be at the root of your plugin (not on its `src` folder)
+- There's no way to load frontend script on footer with it, so we are still using the enqueue on `index.php`
+- Documentation is [here](https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata)
