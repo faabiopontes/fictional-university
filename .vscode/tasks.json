@@ -8,6 +8,12 @@
             "type": "shell",
             "command": "cd app/public/wp-content/plugins/are-you-paying-attention && npm run start",
             "problemMatcher": []
+        },
+        {
+            "label": "NPM Start - Featured Professor Block Type",
+            "type": "shell",
+            "command": "cd app/public/wp-content/plugins/featured-professor && npm run start",
+            "problemMatcher": []
         }
     ]
 }
