@@ -26,3 +26,7 @@ These notes are for course [Become a WordPress Developer: Unlocking Power With C
 - The `block.json` file should be at the root of your plugin (not on its `src` folder)
 - There's no way to load frontend script on footer with it, so we are still using the enqueue on `index.php`
 - Documentation is [here](https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata)
+
+## WP Blocks VS Our Own Blocks
+- If we use a lot of WP Blocks the problem is when you need to update them
+- Since what is saved in the database is the HTML, when we need to update multiple posts to a new format we have to go one by one
