@@ -1,4 +1,5 @@
-<?php
+<?php get_header();
+
     while(have_posts()) {
         the_post(); // each time the_post runs it gets info from the next post
 ?>
@@ -6,4 +7,5 @@
 <?php the_content(); ?>
 <hr/>
 
-<?php } ?>
+<?php }
+get_footer(); ?>
