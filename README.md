@@ -28,5 +28,10 @@ These notes are for course [Become a WordPress Developer: Unlocking Power With C
 - Documentation is [here](https://developer.wordpress.org/block-editor/reference-guides/block-api/block-metadata)
 
 ## WP Blocks VS Our Own Blocks
+
 - If we use a lot of WP Blocks the problem is when you need to update them
 - Since what is saved in the database is the HTML, when we need to update multiple posts to a new format we have to go one by one
+
+## Custom Queries
+
+- Load whatever you want, whenever you want
