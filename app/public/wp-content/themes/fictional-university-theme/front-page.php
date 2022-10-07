@@ -17,7 +17,7 @@
             <?php
             $today = date('Ymd');
             $homepageEvents = new WP_Query([
-                'posts_per_page' => -1,
+                'posts_per_page' => 2,
                 'post_type' => 'event',
                 'orderby' => 'meta_value',
                 'order' => 'asc',
