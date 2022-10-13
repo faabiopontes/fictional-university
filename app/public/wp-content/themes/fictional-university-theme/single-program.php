@@ -44,24 +44,30 @@ the_post(); // each time the_post runs it gets info from the next post
             ],
         ]
     ]);
-
-    while ($homepageEvents->have_posts()) :
-        $homepageEvents->the_post();
-        $eventDate = new DateTime(get_field('event_date'));
+    if ($homepageEvents->have_posts()) :
     ?>
-        <div class="event-summary">
-            <a class="event-summary__date t-center" href="<?php the_permalink(); ?>">
-                <span class="event-summary__month"><?= $eventDate->format('M'); ?></span>
-                <span class="event-summary__day"><?= $eventDate->format('d'); ?></span>
-            </a>
-            <div class="event-summary__content">
-                <h5 class="event-summary__title headline headline--tiny"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h5>
-                <p><?= has_excerpt() ? get_the_excerpt() : wp_trim_words(get_the_content(), 18); ?> <a href="<?php the_permalink(); ?>" class="nu gray">Read more</a></p>
+        <hr class="section-break">
+        <h2 class="headline headline--medium">Upcoming <?= get_the_title(); ?> Events</h2>
+        <?php
+
+        while ($homepageEvents->have_posts()) :
+            $homepageEvents->the_post();
+            $eventDate = new DateTime(get_field('event_date'));
+        ?>
+            <div class="event-summary">
+                <a class="event-summary__date t-center" href="<?php the_permalink(); ?>">
+                    <span class="event-summary__month"><?= $eventDate->format('M'); ?></span>
+                    <span class="event-summary__day"><?= $eventDate->format('d'); ?></span>
+                </a>
+                <div class="event-summary__content">
+                    <h5 class="event-summary__title headline headline--tiny"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h5>
+                    <p><?= has_excerpt() ? get_the_excerpt() : wp_trim_words(get_the_content(), 18); ?> <a href="<?php the_permalink(); ?>" class="nu gray">Read more</a></p>
+                </div>
             </div>
-        </div>
 
     <?php
-    endwhile;
+        endwhile;
+    endif;
     wp_reset_postdata(); // reset post to current URL base post 
     ?>
 </div>
