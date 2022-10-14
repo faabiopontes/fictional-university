@@ -24,6 +24,40 @@ the_post(); // each time the_post runs it gets info from the next post
         <?php the_content(); ?>
     </div>
     <?php
+    $relatedProfessors = new WP_Query([
+        'posts_per_page' => -1,
+        'post_type' => 'professor',
+        'orderby' => 'title',
+        'order' => 'asc',
+        'meta_query' => [
+            [
+                'key' => 'related_programs',
+                'compare' => 'LIKE',
+                'value' => '"' . get_the_ID() . '"',
+            ],
+        ]
+    ]);
+    if ($relatedProfessors->have_posts()) :
+    ?>
+        <hr class="section-break">
+        <h2 class="headline headline--medium"><?= get_the_title(); ?> Professors</h2>
+        <ul>
+            <?php
+
+            while ($relatedProfessors->have_posts()) :
+                $relatedProfessors->the_post();
+                $eventDate = new DateTime(get_field('event_date'));
+            ?>
+                <li><a href=""><?php the_title(); ?></a></li>
+
+            <?php
+            endwhile;
+            ?>
+        </ul>
+    <?php
+    endif;
+
+    wp_reset_postdata(); // reset post to current URL base post 
     $today = date('Ymd');
     $homepageEvents = new WP_Query([
         'posts_per_page' => 2,
