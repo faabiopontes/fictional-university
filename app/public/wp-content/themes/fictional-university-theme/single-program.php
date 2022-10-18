@@ -41,14 +41,19 @@ the_post(); // each time the_post runs it gets info from the next post
     ?>
         <hr class="section-break">
         <h2 class="headline headline--medium"><?= get_the_title(); ?> Professors</h2>
-        <ul>
+        <ul class="professor-cards">
             <?php
 
             while ($relatedProfessors->have_posts()) :
                 $relatedProfessors->the_post();
                 $eventDate = new DateTime(get_field('event_date'));
             ?>
-                <li><a href=""><?php the_title(); ?></a></li>
+                <li class="professor-card__list-item">
+                    <a class="professor-card" href="<?php the_permalink(); ?>">
+                        <img class="professor-card__image" src="<?php the_post_thumbnail_url(); ?>">
+                        <span class="professor-card__name"><?php the_title(); ?></span>
+                    </a>
+                </li>
 
             <?php
             endwhile;
