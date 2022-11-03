@@ -7,7 +7,7 @@ function pageBanner($args = [])
 
     if ($args['photo'])
         $photo = $args['photo'];
-    else if ($pageBannerImage)
+    else if ($pageBannerImage and !is_archive() and !is_home())
         $photo = $pageBannerImage['sizes']['pageBanner'];
     else
         $photo = get_theme_file_uri('/images/ocean.jpg');
