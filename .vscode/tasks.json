@@ -14,6 +14,12 @@
             "type": "shell",
             "command": "cd app/public/wp-content/plugins/featured-professor && npm run start",
             "problemMatcher": []
-        }
+        },
+        {
+            "label": "NPM Start - Fictional University Theme",
+            "type": "shell",
+            "command": "cd app/public/wp-content/themes/fictional-university-theme && npm run start",
+            "problemMatcher": []
+        },
     ]
 }
