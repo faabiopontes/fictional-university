@@ -1,0 +1,12 @@
+{
+    "name": "faabiopontes/fictional-university",
+    "require": {
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "authors": [
+        {
+            "name": "Fabio Pontes",
+            "email": "faabiopontes@gmail.com"
+        }
+    ]
+}
