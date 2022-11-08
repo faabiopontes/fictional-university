@@ -77,8 +77,8 @@ define( 'WP_DEBUG', false );
 
 
 /* Add any custom values between this line and the "stop editing" line. */
-
-
+require_once(__DIR__ . '/../../vendor/autoload.php');
+\Dotenv\Dotenv::createImmutable(__DIR__ . '/../..')->load();
 
 /* That's all, stop editing! Happy publishing. */
 
