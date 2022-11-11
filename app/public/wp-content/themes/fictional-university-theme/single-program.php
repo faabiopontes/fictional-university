@@ -79,14 +79,31 @@ pageBanner();
     ?>
         <hr class="section-break">
         <h2 class="headline headline--medium">Upcoming <?= get_the_title(); ?> Events</h2>
-    <?php
+        <?php
 
         while ($homepageEvents->have_posts()) :
             $homepageEvents->the_post();
             get_template_part('template-parts/content', get_post_type());
         endwhile;
     endif;
-    wp_reset_postdata(); // reset post to current URL base post 
+
+    wp_reset_postdata(); // reset post to current URL base post
+    $relatedCampuses = get_field('related_campuses');
+    if ($relatedCampuses) :
+        ?>
+        <hr class="section-break">
+        <h2 class="headline headline--medium"><?= get_the_title(); ?> is Available At These Campuses:</h2>
+        <ul class="min-list link-list">
+            <?php
+            foreach ($relatedCampuses as $campus) :
+            ?>
+                <li><a href="<?= get_the_permalink($campus); ?>"><?= get_the_title($campus); ?></a></li>
+            <?php
+            endforeach;
+            ?>
+        </ul>
+    <?php
+    endif;
     ?>
 </div>
 <?php

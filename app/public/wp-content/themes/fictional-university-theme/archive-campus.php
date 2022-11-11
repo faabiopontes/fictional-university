@@ -13,10 +13,11 @@ pageBanner([
             $mapLocation = get_field('map_location');
         ?>
             <div data-lat="<?= $mapLocation['lat']; ?>" data-lng="<?= $mapLocation['lng']; ?>" class="marker">
+                <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+                <p><?= $mapLocation['address'] ?></p>
             </div>
         <?php
         endwhile;
-        echo paginate_links();
         ?>
     </div>
 </div>
