@@ -79,6 +79,10 @@ function university_adjust_queries($query)
         $query->set('order', 'ASC',);
         $query->set('posts_per_page', -1);
     }
+
+    if (is_post_type_archive('campus')) {
+        $query->set('posts_per_page', -1);
+    }
 }
 add_action('pre_get_posts', 'university_adjust_queries');
 
