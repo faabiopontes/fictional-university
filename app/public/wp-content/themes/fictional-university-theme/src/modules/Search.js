@@ -1,34 +1,62 @@
 class Search {
   // 1. Describe and create/initiate our object
   constructor() {
+    this.resultsDiv = document.getElementById("search-overlay__results");
     this.openButtons = document.querySelectorAll(".js-search-trigger");
     this.closeButton = document.querySelector(".search-overlay__close");
     this.searchOverlay = document.querySelector(".search-overlay");
-    this.searchField = document.querySelector("#search-term");
+    this.searchField = document.getElementById("search-term");
     this.typingTimer;
     this.isOverlayOpen = false;
+    this.isSpinnerVisible = false;
+    this.previousValue;
 
     this.events();
   }
 
   // 2. Events
   events() {
-    this.openButtons.forEach(button => button.addEventListener("click", this.openOverlay.bind(this)));
+    this.openButtons.forEach((button) =>
+      button.addEventListener("click", this.openOverlay.bind(this))
+    );
     this.closeButton.addEventListener("click", this.closeOverlay.bind(this));
     document.addEventListener("keydown", this.keyPressDispatcher.bind(this));
-    this.searchField.addEventListener("keydown", this.typingLogic.bind(this));
+    this.searchField.addEventListener("keyup", this.typingLogic.bind(this));
   }
 
   // 3. Methods
   typingLogic(event) {
     clearInterval(this.typingTimer);
+    const inputValue = event.target.value;
+    console.log({ inputValue });
+
+    if (inputValue === this.previousValue) {
+      return;
+    }
+
+    if (!inputValue) {
+      this.resultsDiv.innerHTML = "";
+      this.isSpinnerVisible = false;
+      return;
+    }
+
+    if (!this.isSpinnerVisible) {
+      this.resultsDiv.innerHTML = '<div class="spinner-loader"></div>';
+      this.isSpinnerVisible = true;
+    }
 
     this.typingTimer = setTimeout(() => {
-      console.log("doSearch");
-    }, 500);
+      this.isSpinnerVisible = false;
+      this.getResults();
+    }, 1500);
 
-    event.preventDefault();
+    this.previousValue = inputValue;
+
     event.stopPropagation();
+  }
+
+  getResults(searchTerm) {
+    this.resultsDiv.innerHTML = "Imagine real search results here...";
   }
 
   openOverlay() {
