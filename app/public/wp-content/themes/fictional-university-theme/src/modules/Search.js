@@ -28,7 +28,6 @@ class Search {
   typingLogic(event) {
     clearInterval(this.typingTimer);
     const inputValue = event.target.value;
-    console.log({ inputValue });
 
     if (inputValue === this.previousValue) {
       return;
