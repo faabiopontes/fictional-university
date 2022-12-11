@@ -1,19 +1,19 @@
 class Search {
   // 1. Describe and create/initiate our object
   constructor() {
-    this.openButton = document.querySelector(".js-search-trigger");
+    this.openButtons = document.querySelectorAll(".js-search-trigger");
     this.closeButton = document.querySelector(".search-overlay__close");
     this.searchOverlay = document.querySelector(".search-overlay");
     this.searchField = document.querySelector("#search-term");
     this.typingTimer;
     this.isOverlayOpen = false;
-    
+
     this.events();
   }
 
   // 2. Events
   events() {
-    this.openButton.addEventListener("click", this.openOverlay.bind(this));
+    this.openButtons.forEach(button => button.addEventListener("click", this.openOverlay.bind(this)));
     this.closeButton.addEventListener("click", this.closeOverlay.bind(this));
     document.addEventListener("keydown", this.keyPressDispatcher.bind(this));
     this.searchField.addEventListener("keydown", this.typingLogic.bind(this));
