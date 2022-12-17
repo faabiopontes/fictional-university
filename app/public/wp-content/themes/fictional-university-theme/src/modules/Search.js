@@ -44,9 +44,12 @@ class Search {
       this.isSpinnerVisible = true;
     }
 
-    this.typingTimer = setTimeout(() => {
+    this.typingTimer = setTimeout(async () => {
       this.isSpinnerVisible = false;
-      this.getResults();
+      console.log("calling getResults");
+      const results = await this.getResults(inputValue);
+      console.log({ results });
+      this.resultsDiv.innerHTML = results[0].title.rendered;
     }, 1500);
 
     this.previousValue = inputValue;
@@ -54,8 +57,13 @@ class Search {
     event.stopPropagation();
   }
 
-  getResults(searchTerm) {
-    this.resultsDiv.innerHTML = "Imagine real search results here...";
+  async getResults(searchTerm) {
+    const response = await fetch(`/wp-json/wp/v2/posts?search=${searchTerm}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.json();
   }
 
   openOverlay() {
