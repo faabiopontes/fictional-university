@@ -26,7 +26,6 @@ class Search {
 
   // 3. Methods
   typingLogic(event) {
-    clearInterval(this.typingTimer);
     const inputValue = event.target.value;
 
     if (inputValue === this.previousValue) {
@@ -44,12 +43,21 @@ class Search {
       this.isSpinnerVisible = true;
     }
 
+    clearInterval(this.typingTimer);
     this.typingTimer = setTimeout(async () => {
       this.isSpinnerVisible = false;
       console.log("calling getResults");
       const results = await this.getResults(inputValue);
       console.log({ results });
-      this.resultsDiv.innerHTML = results[0].title.rendered;
+      this.resultsDiv.innerHTML = `
+        <h2 class="search-overlay__section-title">General Information</h2>
+        <ul class="link-list min-list">
+        ${results.map(
+          ({ link, title: { rendered } }) =>
+            `<li><a href="${link}">${rendered}</a></li>`
+        ).join('')}
+        </ul>
+      `;
     }, 1500);
 
     this.previousValue = inputValue;
