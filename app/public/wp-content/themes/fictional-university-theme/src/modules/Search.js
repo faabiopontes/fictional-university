@@ -51,12 +51,7 @@ class Search {
       console.log({ results });
       this.resultsDiv.innerHTML = `
         <h2 class="search-overlay__section-title">General Information</h2>
-        <ul class="link-list min-list">
-        ${results.map(
-          ({ link, title: { rendered } }) =>
-            `<li><a href="${link}">${rendered}</a></li>`
-        ).join('')}
-        </ul>
+        ${results}
       `;
     }, 1500);
 
@@ -71,7 +66,21 @@ class Search {
         "Content-Type": "application/json",
       },
     });
-    return response.json();
+    const results = await response.json();
+
+    if (!results.length) {
+      return `<p>No general information matches that search.</p>`;
+    }
+
+    return `
+      <ul class="link-list min-list">
+        ${results
+          .map(
+            ({ link, title: { rendered } }) =>
+              `<li><a href="${link}">${rendered}</a></li>`
+          )
+          .join("")}
+      </ul>`;
   }
 
   openOverlay() {
