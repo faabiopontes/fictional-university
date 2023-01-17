@@ -62,13 +62,37 @@ class Search {
     event.stopPropagation();
   }
 
+  async getResultsPosts(searchTerm) {
+    const responsePosts = await fetch(
+      `/wp-json/wp/v2/posts?search=${searchTerm}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return responsePosts.json();
+  }
+
+  async getResultsPages(searchTerm) {
+    const responsePages = await fetch(
+      `/wp-json/wp/v2/pages?search=${searchTerm}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return responsePages.json();
+  }
+
   async getResults(searchTerm) {
-    const response = await fetch(`/wp-json/wp/v2/posts?search=${searchTerm}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const results = await response.json();
+    const [resultsPosts, resultsPages] = await Promise.all([
+      this.getResultsPosts(searchTerm),
+      this.getResultsPages(searchTerm),
+    ]);
+    const results = resultsPosts.concat(resultsPages);
+    console.log({ results, resultsPosts, resultsPages });
 
     if (!results.length) {
       return `<p>No general information matches that search.</p>`;
