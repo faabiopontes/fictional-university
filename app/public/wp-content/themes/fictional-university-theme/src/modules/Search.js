@@ -49,12 +49,16 @@ class Search {
     this.typingTimer = setTimeout(async () => {
       this.isSpinnerVisible = false;
       console.log("calling getResults");
-      const results = await this.getResults(inputValue);
-      console.log({ results });
-      this.resultsDiv.innerHTML = `
+      try {
+        const results = await this.getResults(inputValue);
+        console.log({ results });
+        this.resultsDiv.innerHTML = `
         <h2 class="search-overlay__section-title">General Information</h2>
         ${results}
       `;
+      } catch (err) {
+        this.resultsDiv.innerHTML = `<p>Unexpected error, please try again.</p>`;
+      }
     }, 750);
 
     this.previousValue = inputValue;

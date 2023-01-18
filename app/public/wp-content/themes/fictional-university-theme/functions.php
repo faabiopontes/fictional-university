@@ -5,7 +5,7 @@ function pageBanner($args = [])
     $title = $args['title'] ?: get_the_title();
     $subtitle = $args['subtitle'] ?: get_field('page_banner_subtitle');
 
-    if ($args['photo'])
+    if (isset($args['photo']) && $args['photo'])
         $photo = $args['photo'];
     else if ($pageBannerImage and !is_archive() and !is_home())
         $photo = $pageBannerImage['sizes']['pageBanner'];
