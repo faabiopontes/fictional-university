@@ -106,8 +106,11 @@ class Search {
       <ul class="link-list min-list">
         ${results
           .map(
-            ({ link, title: { rendered } }) =>
-              `<li><a href="${link}">${rendered}</a></li>`
+            ({ link, title: { rendered }, authorName }) =>
+              `<li>
+                <a href="${link}">${rendered}</a>
+                ${authorName ? ` by ${authorName}` : ""}
+              </li>`
           )
           .join("")}
       </ul>`;
