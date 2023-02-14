@@ -74,6 +74,7 @@ $table_prefix = 'wp_';
  * @link https://wordpress.org/support/article/debugging-in-wordpress/
  */
 define( 'WP_DEBUG', false );
+define( 'GRAPHQL_JWT_AUTH_SECRET_KEY', 'fspfspfspfsp' );
 
 
 /* Add any custom values between this line and the "stop editing" line. */
