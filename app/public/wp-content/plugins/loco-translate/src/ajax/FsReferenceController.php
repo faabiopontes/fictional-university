@@ -7,18 +7,10 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
 
 
     /**
-     * @param string
+     * @param string $refpath
      * @return Loco_fs_File
      */
     private function findSourceFile( $refpath ){
-        
-        /*/ absolute file path means no search paths required
-        if( Loco_fs_File::abs($refpath) ){
-            $srcfile = new Loco_fs_File( $refpath );
-            if( $srcfile->exists() ){
-                return $srcfile;
-            }
-        }*/
 
         // reference may be resolvable via referencing PO file's location
         $pofile = new Loco_fs_File( $this->get('path') );
@@ -92,13 +84,16 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
         }
         
         // reference must parse as <path>:<line>
-        $ref = $post->ref;
-        if( ! preg_match('/^(.+):(\\d+)$/', $ref, $r ) ){
-            throw new InvalidArgumentException('Invalid file reference, '.$ref );
+        $refpath = $post->ref;
+        if( preg_match('/^(.+):(\\d+)$/', $refpath, $r ) ){
+            $refpath = $r[1];
+            $refline = (int) $r[2];
+        }
+        else {
+            $refline = 0;
         }
         
         // find file or fail
-        list( , $refpath, $refline ) = $r;
         $srcfile = $this->findSourceFile($refpath);
         
         // deny access to sensitive files
@@ -106,19 +101,16 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
             throw new InvalidArgumentException('File access disallowed');
         }
         
-        // validate allowed source file types 
+        // validate allowed source file types, including custom aliases
         $conf = Loco_data_Settings::get();
         $ext = strtolower( $srcfile->extension() );
-        $allow = array_merge( ['php','js'], $conf->php_alias, $conf->jsx_alias );
-        if( ! in_array($ext,$allow,true) ){
+        $type = $conf->ext2type($ext,'none');
+        if( 'none' === $type ){
             throw new InvalidArgumentException('File extension disallowed, '.$ext );
         }
 
-        // get file type from registered file extensions:
-        $type = $conf->ext2type( $ext );
-
         $this->set('type', $type );
-        $this->set('line', (int) $refline );
+        $this->set('line', $refline );
         $this->set('path', $srcfile->getRelativePath( loco_constant('WP_CONTENT_DIR') ) );
         
         // source code will be HTML-tokenized into multiple lines
@@ -138,6 +130,7 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
         }
         else if( 'js' === $type ){
             $tokens = new LocoJsTokens( $srcfile->getContents() );
+            $tokens->allow(T_WHITESPACE);
         }
         else {
             $tokens = null;
@@ -148,7 +141,6 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
             $thisline = 1;
             while( $tok = $tokens->advance() ){
                 if( is_array($tok) ){
-                    // line numbers added in PHP 5.2.2 - WordPress minimum is 5.2.4
                     list( $t, $str, $startline ) = $tok;
                     $clss = token_name($t);
                     // tokens can span multiple lines (whitespace/html/comments)
@@ -162,10 +154,14 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
                 }
                 // token can span multiple lines, so include only bytes on required line[s]
                 foreach( $lines as $i => $line ){
+                    // pad missing lines. $code must be contiguous
                     $thisline = $startline + $i;
-                    $html = '<code class="'.$clss.'">'.htmlentities($line,ENT_COMPAT,'UTF-8').'</code>';
-                    // append highlighted token to current line
                     $j = $thisline - 1;
+                    while( count($code) < $j ){
+                        $code[] = '<code class="T_NONE"> </code>';
+                    }
+                    // append highlighted token to current line
+                    $html = '<code class="'.$clss.'">'.htmlentities($line,ENT_COMPAT,'UTF-8').'</code>';
                     if( isset($code[$j]) ){
                         $code[$j] .= $html;
                     }
@@ -176,16 +172,14 @@ class Loco_ajax_FsReferenceController extends Loco_ajax_common_BundleController 
             }
         }
         // permit limited other file types, but without back end highlighting
-        else if( 'js' === $type || 'twig' === $type || 'php' === $type ){
+        else {
             foreach( preg_split( '/\\R/u', $srcfile->getContents() ) as $line ){
                 $code[] = '<code>'.htmlentities($line,ENT_COMPAT,'UTF-8').'</code>';
             }
         }
-        else {
-            throw new Loco_error_Exception( sprintf('%s source view not supported', $type) ); // @codeCoverageIgnore
-        }
- 
-        if( ! isset($code[$refline-1]) ){
+        
+        // allow 0 line reference when line is unknown (e.g. block.json) else it must exist
+        if( $refline && ! isset($code[$refline-1]) ){
             throw new Loco_error_Exception( sprintf('Line %u not in source file', $refline) );
         }
  

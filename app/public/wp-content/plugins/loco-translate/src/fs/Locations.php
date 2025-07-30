@@ -77,9 +77,18 @@ class Loco_fs_Locations extends ArrayObject {
 
 
     /**
-     * @return Loco_fs_Locations 
+     * @deprecated Use getLang
+     * @return Loco_fs_Locations
      */
     public static function getGlobal(){
+        return self::getLangs();
+    }
+
+
+    /**
+     * @return Loco_fs_Locations
+     */
+    public static function getLangs(){
         if( ! self::$langs ){
             self::$langs = new Loco_fs_Locations( [
                 loco_constant('WP_LANG_DIR'),
@@ -110,8 +119,8 @@ class Loco_fs_Locations extends ArrayObject {
     public static function getPlugins(){
         if( ! self::$plugin ){
             self::$plugin = new Loco_fs_Locations( [
-                loco_constant('WP_PLUGIN_DIR'),
                 loco_constant('WPMU_PLUGIN_DIR'),
+                loco_constant('WP_PLUGIN_DIR'),
             ] );
         }
         return self::$plugin;
@@ -119,7 +128,7 @@ class Loco_fs_Locations extends ArrayObject {
 
 
     /**
-     * @param array
+     * Create instance from list of locations
      */
     public function __construct( array $paths ){
         parent::__construct( [] );
@@ -130,13 +139,13 @@ class Loco_fs_Locations extends ArrayObject {
 
 
     /**
-     * @param string normalized absolute path
+     * @param string $path normalized absolute path
      * @return Loco_fs_Locations
      */ 
     public function add( $path ){
         foreach( $this->expand($path) as $path ){
             // path must have trailing slash, otherwise "/plugins/foobar" would match "/plugins/foo/"
-            $this[$path] = strlen($path);
+            $this->offsetSet( $path, strlen($path) );
         }
         return $this;
     }
@@ -144,7 +153,7 @@ class Loco_fs_Locations extends ArrayObject {
 
     /**
      * Check if a given path begins with any of the registered ones
-     * @param string absolute path
+     * @param string $path absolute path
      * @return bool whether path matched
      */    
     public function check( $path ){
@@ -162,7 +171,7 @@ class Loco_fs_Locations extends ArrayObject {
     /**
      * Match location and return the relative subpath.
      * Note that exact match is returned as "." indicating self
-     * @param string
+     * @param string $path
      * @return string | null
      */
     public function rel( $path ){
@@ -181,13 +190,51 @@ class Loco_fs_Locations extends ArrayObject {
 
 
     /**
-     * @param string
+     * Like rel() but returns base directory also
      * @return string[]
      */
-    private function expand( $path ){
-        $path = Loco_fs_File::abs($path);
-        if( ! $path ){
-            throw new InvalidArgumentException('Expected absolute path');
+    public function split( $path ){
+        foreach( $this->expand($path) as $path ){
+            foreach( $this as $prefix => $length ){
+                if( $prefix === $path ){
+                    return [$prefix,'.'];
+                }
+                if( substr($path,0,$length) === $prefix ){
+                    return [ $prefix, untrailingslashit( substr($path,$length) ) ];
+                }
+            }
+        }
+        return null;
+    }
+
+
+    /*
+     * Opposite of rel, takes a relative path and constructs the first full path that exists
+     *
+    public function abs( $rel ){
+        foreach( $this as $prefix => $length ){
+            $path = realpath( $prefix.$rel );
+            if( $path ){
+                return $path;
+            }
+        }
+        return null;
+    }*/
+
+
+    /**
+     * @param string $rel
+     * @return string[]
+     */
+    public function expand( $rel ){
+        if( '' === $rel ){
+            //Loco_error_AdminNotices::debug('Expanding empty path to empty array');
+            return [];
+        }
+        $path = Loco_fs_File::abs($rel);
+        if( '' === $path ){
+            //throw new InvalidArgumentException('Failed on abs('.var_export($rel,true).')');
+            return [];
         }
         $paths = [ trailingslashit($path) ];
         // add real path if differs
@@ -197,6 +244,19 @@ class Loco_fs_Locations extends ArrayObject {
         }
         return $paths;
     }
+
+
+    /**
+     * @return string[]
+     */
+    public function apply( $suffix = '' ){
+        $paths = [];
+        foreach( $this->getArrayCopy() as $prefix => $length ){
+            $paths[] = $prefix.$suffix;
+        }
+        return $paths;
+    }
+
     
-    
+
 }

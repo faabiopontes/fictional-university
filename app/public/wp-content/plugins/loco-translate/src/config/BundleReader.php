@@ -19,7 +19,6 @@ class Loco_config_BundleReader {
 
 
     /**
-     * @param Loco_fs_File loco.xml file
      * @return Loco_package_Bundle
      */
     public function loadXml( Loco_fs_File $file ){
@@ -104,7 +103,7 @@ class Loco_config_BundleReader {
                     // sources may be <file>, <directory> or pass in special <path> if it could be either 
                     foreach( $model->query('file',$sourceElement) as $fileElement ){
                         $project->addSourceFile( $model->evaluateFileElement($fileElement) );
-                    }                
+                    }
                     foreach( $model->query('directory',$sourceElement) as $fileElement ){
                         $project->addSourceDirectory( $model->evaluateFileElement($fileElement) );
                     }
@@ -146,7 +145,7 @@ class Loco_config_BundleReader {
                 // <template>
                 // configure POT file, should only be one
                 foreach( $model->query('template',$projectElement) as $templateElement ){
-                    if( $model->evaulateBooleanAttribute( $templateElement, 'locked') ){
+                    if( $model->evaluateBooleanAttribute( $templateElement, 'locked') ){
                         $project->setPotLock( true );
                     }
                     foreach( $model->query('file',$templateElement) as $fileElement ){

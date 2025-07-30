@@ -2,59 +2,68 @@
 
 namespace WPGraphQL\Data;
 
-use Exception;
-use WP;
-use WP_Post;
+use GraphQL\Deferred;
+use GraphQL\Error\UserError;
 use WPGraphQL\AppContext;
-use WPGraphQL\Model\Post;
+use WPGraphQL\Router;
+use WPGraphQL\Utils\Utils;
+use WP_Post;
 
 class NodeResolver {
 
 	/**
-	 * @var WP
+	 * @var \WP
 	 */
 	protected $wp;
 
 	/**
-	 * @var AppContext
+	 * @var \WPGraphQL\AppContext
 	 */
 	protected $context;
 
 	/**
+	 * @var string
+	 */
+	protected $route;
+
+	/**
 	 * NodeResolver constructor.
 	 *
-	 * @param AppContext $context
+	 * @param \WPGraphQL\AppContext $context
 	 *
 	 * @return void
 	 */
 	public function __construct( AppContext $context ) {
 		global $wp;
-		$this->wp      = $wp;
-		$this->context = $context;
+		$this->wp               = $wp;
+		$this->route            = Router::$route . '/?$';
+		$this->wp->matched_rule = $this->route;
+		$this->context          = $context;
 	}
 
 	/**
 	 * Given a Post object, validates it before returning it.
 	 *
-	 * @param WP_Post $post
+	 * @param \WP_Post $post
 	 *
-	 * @return WP_Post|null
+	 * @return \WP_Post|null
 	 */
 	public function validate_post( WP_Post $post ) {
-
 		if ( isset( $this->wp->query_vars['post_type'] ) && ( $post->post_type !== $this->wp->query_vars['post_type'] ) ) {
 			return null;
 		}
 
-		if ( ! isset( $this->wp->query_vars['uri'] ) ) {
+		if ( ! $this->is_valid_node_type( 'ContentNode' ) ) {
+			return null;
+		}
+
+		if ( empty( $this->wp->query_vars['uri'] ) ) {
 			return $post;
 		}
 
-		$permalink    = get_permalink( $post );
-		$parsed_path  = $permalink ? wp_parse_url( $permalink, PHP_URL_PATH ) : null;
-		$trimmed_path = $parsed_path ? rtrim( ltrim( $parsed_path, '/' ), '/' ) : null;
-		$uri_path     = rtrim( ltrim( $this->wp->query_vars['uri'], '/' ), '/' );
-		if ( $trimmed_path !== $uri_path ) {
+		// if the uri doesn't have the post's urlencoded name or ID in it, we must've found something we didn't expect
+		// so we will return null
+		if ( false === strpos( $this->wp->query_vars['uri'], (string) $post->ID ) && false === strpos( $this->wp->query_vars['uri'], urldecode( sanitize_title( $post->post_name ) ) ) ) {
 			return null;
 		}
 
@@ -62,15 +71,33 @@ class NodeResolver {
 	}
 
 	/**
+	 * Given a Term object, validates it before returning it.
+	 *
+	 * @param \WP_Term $term
+	 *
+	 * @return \WP_Term|null
+	 */
+	public function validate_term( \WP_Term $term ) {
+		if ( ! $this->is_valid_node_type( 'TermNode' ) ) {
+			return null;
+		}
+
+		if ( isset( $this->wp->query_vars['taxonomy'] ) && $term->taxonomy !== $this->wp->query_vars['taxonomy'] ) {
+			return null;
+		}
+
+		return $term;
+	}
+
+	/**
 	 * Given the URI of a resource, this method attempts to resolve it and return the
 	 * appropriate related object
 	 *
-	 * @param string       $uri              The path to be used as an identifier for the
-	 *                                             resource.
-	 * @param mixed|array|string $extra_query_vars Any extra query vars to consider
+	 * @param string                     $uri              The path to be used as an identifier for the resource.
+	 * @param array<string,mixed>|string $extra_query_vars Any extra query vars to consider
 	 *
 	 * @return mixed
-	 * @throws Exception
+	 * @throws \GraphQL\Error\UserError If the query class does not exist.
 	 */
 	public function resolve_uri( string $uri, $extra_query_vars = '' ) {
 
@@ -83,9 +110,9 @@ class NodeResolver {
 		 *
 		 * @param mixed|null $node The node, defaults to nothing.
 		 * @param string $uri The uri being searched.
-		 * @param AppContext $content The app context.
-		 * @param WP $wp WP object.
-		 * @param mixed|array|string $extra_query_vars Any extra query vars to consider.
+		 * @param \WPGraphQL\AppContext $content The app context.
+		 * @param \WP $wp WP object.
+		 * @param array<string,mixed>|string $extra_query_vars Any extra query vars to consider.
 		 */
 		$node = apply_filters( 'graphql_pre_resolve_uri', null, $uri, $this->context, $this->wp, $extra_query_vars );
 
@@ -93,175 +120,189 @@ class NodeResolver {
 			return $node;
 		}
 
+		/**
+		 * Comments are embedded as a #comment-{$id} in the post's content.
+		 *
+		 * If the URI is for a comment, we can resolve it now.
+		 */
+		$comment_id = $this->maybe_parse_comment_uri( $uri );
+		if ( null !== $comment_id ) {
+			return $this->context->get_loader( 'comment' )->load_deferred( $comment_id );
+		}
+
+		/**
+		 * Try to resolve the URI with WP_Query.
+		 *
+		 * This is the way WordPress native permalinks are resolved.
+		 *
+		 * @see \WP::main()
+		 */
+
+		// Parse the URI and sets the $wp->query_vars property.
 		$uri = $this->parse_request( $uri, $extra_query_vars );
 
-		// Resolve the homepage.
-		if ( '/' === $uri ) {
-
-			$page_id       = get_option( 'page_on_front', 0 );
-			$show_on_front = get_option( 'show_on_front', 'posts' );
-
-			// If the homepage is a static page, return the page.
-			if ( 'page' === $show_on_front && ! empty( $page_id ) ) {
-
-				$page = get_post( $page_id );
-
-				if ( empty( $page ) ) {
-					return null;
-				}
-
-				return new Post( $page );
-			}
-
-			// If the homepage is set to latest posts, we need to make sure not to resolve it when when querying for `ContentNode`s.
-			if ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] ) {
-				return null;
-			}
-
-			// We dont have an 'Archive' type, so we resolve to the ContentType.
-			return $this->context->get_loader( 'post_type' )->load_deferred( 'post' );
-		}
-
-		// Resolve a page by ID.
-		if ( isset( $this->wp->query_vars['page_id'] ) ) {
-			return absint( $this->wp->query_vars['page_id'] ) ? $this->context->get_loader( 'post' )->load_deferred( absint( $this->wp->query_vars['page_id'] ) ) : null;
-		}
-
-		// Resolve a post by ID.
-		if ( isset( $this->wp->query_vars['p'] ) ) {
-			return absint( $this->wp->query_vars['p'] ) ? $this->context->get_loader( 'post' )->load_deferred( absint( $this->wp->query_vars['p'] ) ) : null;
-		}
-
-		// Resolve a post by its slug.
-		if ( isset( $this->wp->query_vars['name'] ) ) {
-
-			// Target post types with a public URI.
-			$allowed_post_types = \WPGraphQL::get_allowed_post_types();
-
-			$post_type = 'post';
-			if ( isset( $this->wp->query_vars['post_type'] ) && in_array( $this->wp->query_vars['post_type'], $allowed_post_types, true ) ) {
-				$post_type = $this->wp->query_vars['post_type'];
-			}
-
-			$post = get_page_by_path( $this->wp->query_vars['name'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
-
-			unset( $this->wp->query_vars['uri'] );
-			$post = $post instanceof WP_Post ? $this->validate_post( $post ) : null;
-
-			return isset( $post->ID ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
-		}
-
-		// Resolve a category term by its ID.
-		if ( isset( $this->wp->query_vars['cat'] ) ) {
-			$node = get_term( absint( $this->wp->query_vars['cat'] ), 'category' );
-
-			return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( (int) $node->term_id ) : null;
-		}
-
-		// Resolve a tag term by its slug.
-		if ( isset( $this->wp->query_vars['tag'] ) ) {
-			$node = get_term_by( 'slug', $this->wp->query_vars['tag'], 'post_tag' );
-
-			return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( (int) $node->term_id ) : null;
-		}
-
-		// Resolve a post by its URI.
-		if ( isset( $this->wp->query_vars['pagename'] ) && ! empty( $this->wp->query_vars['pagename'] ) ) {
-
-			unset( $this->wp->query_vars['uri'] );
-
-			$post_type = isset( $this->wp->query_vars['post_type'] ) ? $this->wp->query_vars['post_type'] : \WPGraphQL::get_allowed_post_types();
-
-			$post = get_page_by_path( $this->wp->query_vars['pagename'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
-
-			if ( ! $post instanceof WP_Post ) {
-				return null;
-			}
-
-			$post = $this->validate_post( $post );
-
-			if ( ! $post ) {
-				return null;
-			}
-
-			if ( (int) get_option( 'page_for_posts', 0 ) === $post->ID ) {
-
-				if ( isset( $extra_query_vars['nodeType'] ) && 'ContentNode' === $extra_query_vars['nodeType'] ) {
-					return null;
-				}
-
-				return $this->context->get_loader( 'post_type' )->load_deferred( 'post' );
-			}
-
-			return $this->context->get_loader( 'post' )->load_deferred( $post->ID );
-		}
-
-		// Resolve a user by its author name.
-		if ( isset( $this->wp->query_vars['author_name'] ) ) {
-			$user = get_user_by( 'slug', $this->wp->query_vars['author_name'] );
-
-			return isset( $user->ID ) ? $this->context->get_loader( 'user' )->load_deferred( $user->ID ) : null;
-		}
-
-		// Resolve a category term by its name.
-		if ( isset( $this->wp->query_vars['category_name'] ) ) {
-			$term = get_category_by_path( $this->wp->query_vars['category_name'] );
-			if ( ! $term instanceof \WP_Term ) {
-				return null;
-			}
-			$node = get_term_by( 'id', $term->term_id, 'category' );
-			return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( $node->term_id ) : null;
-		}
-
 		/**
-		 * If we know the post_type, we can try again to resolve the ContentNode.
+		 * If the URI is '/', we can resolve it now.
 		 *
-		 * Failing that we just resolve to the post type.
+		 * We don't rely on $this->parse_request(), since the home page doesn't get a rewrite rule.
 		 */
-		if ( isset( $this->wp->query_vars['post_type'] ) ) {
+		if ( '/' === $uri ) {
+			return $this->resolve_home_page();
+		}
 
-			// If the query is asking for a Page nodeType with the home uri, try and resolve it.
-			if ( '/' === $this->wp->query_vars['uri'] && ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] ) ) {
+		/**
+		 * Filter the query class used to resolve the URI. By default this is WP_Query.
+		 *
+		 * This can be used by Extensions which use a different query class to resolve data.
+		 *
+		 * @param class-string               $query_class The query class used to resolve the URI. Defaults to WP_Query.
+		 * @param ?string                    $uri The uri being searched.
+		 * @param \WPGraphQL\AppContext      $content The app context.
+		 * @param \WP                        $wp WP object.
+		 * @param array<string,mixed>|string $extra_query_vars Any extra query vars to consider.
+		 */
+		$query_class = apply_filters( 'graphql_resolve_uri_query_class', 'WP_Query', $uri, $this->context, $this->wp, $extra_query_vars );
 
-				// If the post type is not a page, but the uri is for the home page, we can return null now
-				if ( 'page' !== $this->wp->query_vars['post_type'] ) {
+		if ( ! class_exists( $query_class ) ) {
+			throw new UserError(
+				esc_html(
+					sprintf(
+					/* translators: %s: The query class used to resolve the URI */
+						__( 'The query class %s used to resolve the URI does not exist.', 'wp-graphql' ),
+						$query_class
+					)
+				)
+			);
+		}
+
+		$query_vars = $this->wp->query_vars;
+
+		/** @var \WP_Query $query */
+		$query = new $query_class( $query_vars );
+
+		// is the query is an archive
+		if ( isset( $query->posts[0] ) && $query->posts[0] instanceof WP_Post && ! $query->is_archive() ) {
+			$queried_object = $query->posts[0];
+		} else {
+			$queried_object = $query->get_queried_object();
+		}
+
+		/**
+		 * When this filter return anything other than null, it will be used as a resolved node
+		 * and the execution will be skipped.
+		 *
+		 * This is to be used in extensions to resolve their own nodes which might not use
+		 * WordPress permalink structure.
+		 *
+		 * It differs from 'graphql_pre_resolve_uri' in that it has been called after the query has been run using the query vars.
+		 *
+		 * @param mixed|null                                    $node             The node, defaults to nothing.
+		 * @param ?string                                       $uri              The uri being searched.
+		 * @param \WP_Term|\WP_Post_Type|\WP_Post|\WP_User|null $queried_object   The queried object, if WP_Query returns one.
+		 * @param \WP_Query                                     $query            The query object.
+		 * @param \WPGraphQL\AppContext                         $content          The app context.
+		 * @param \WP                                           $wp               WP object.
+		 * @param array<string,mixed>|string                    $extra_query_vars Any extra query vars to consider.
+		 */
+		$node = apply_filters( 'graphql_resolve_uri', null, $uri, $queried_object, $query, $this->context, $this->wp, $extra_query_vars );
+
+		if ( ! empty( $node ) ) {
+			return $node;
+		}
+
+		// Resolve Post Objects.
+		if ( $queried_object instanceof WP_Post ) {
+
+			// If Page for Posts is set, we need to return the Page archive, not the page.
+			if ( $query->is_posts_page ) {
+				// If were intentionally querying for a something other than a ContentType, we need to return null instead of the archive.
+				if ( ! $this->is_valid_node_type( 'ContentType' ) ) {
 					return null;
 				}
 
-				$page_on_front = get_option( 'page_on_front', 0 );
-				$post          = get_post( absint( $page_on_front ) );
-				return ! empty( $post ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
+				$post_type_object = get_post_type_object( 'post' );
+
+				if ( ! $post_type_object ) {
+					return null;
+				}
+
+				return ! empty( $post_type_object->name ) ? $this->context->get_loader( 'post_type' )->load_deferred( $post_type_object->name ) : null;
 			}
 
-			// If the query is asking for a Page nodeType with the uri, try and resolve it.
-			if ( isset( $this->wp->query_vars['nodeType'] ) && 'ContentNode' === $this->wp->query_vars['nodeType'] && isset( $this->wp->query_vars['uri'] ) ) {
-				$post_type = $this->wp->query_vars['post_type'];
-
-				$post = get_page_by_path( $this->wp->query_vars['uri'], 'OBJECT', $post_type ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
-
-				$post = isset( $post->ID ) ? $this->validate_post( $post ) : null;
-				return isset( $post->ID ) ? $this->context->get_loader( 'post' )->load_deferred( $post->ID ) : null;
+			// Validate the post before returning it.
+			if ( ! $this->validate_post( $queried_object ) ) {
+				return null;
 			}
 
-			$post_type_object = get_post_type_object( $this->wp->query_vars['post_type'] );
+			if ( empty( $extra_query_vars ) && isset( $this->wp->query_vars['error'] ) && '404' === $this->wp->query_vars['error'] ) {
+				return null;
+			}
 
-			return ! empty( $post_type_object ) ? $this->context->get_loader( 'post_type' )->load_deferred( $post_type_object->name ) : null;
+			$post_id = $queried_object->ID;
+
+			$as_preview = false;
+
+			// if asPreview isn't passed explicitly as an argument on a node,
+			// attempt to fill the value from the $query_vars passed on the URI as a query param
+			if ( is_array( $extra_query_vars ) && array_key_exists( 'asPreview', $extra_query_vars ) && null === $extra_query_vars['asPreview'] && isset( $query_vars['preview'] ) ) {
+				// note, the "preview" arg comes through as a string, not a boolean so we need to check 'true' as a string
+				$as_preview = 'true' === $query_vars['preview'];
+			}
+
+			$as_preview = isset( $extra_query_vars['asPreview'] ) && true === $extra_query_vars['asPreview'] ? true : $as_preview;
+
+			if ( true === $as_preview ) {
+				$post_id = Utils::get_post_preview_id( $post_id );
+			}
+
+			return ! empty( $post_id ) ? $this->context->get_loader( 'post' )->load_deferred( $post_id ) : null;
 		}
-		
+
+		// Resolve Terms.
+		if ( $queried_object instanceof \WP_Term ) {
+			// Validate the term before returning it.
+			if ( ! $this->validate_term( $queried_object ) ) {
+				return null;
+			}
+
+			return ! empty( $queried_object->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( $queried_object->term_id ) : null;
+		}
+
+		// Resolve Post Types.
+		if ( $queried_object instanceof \WP_Post_Type ) {
+
+			// Bail if we're explicitly requesting a different GraphQL type.
+			if ( ! $this->is_valid_node_type( 'ContentType' ) ) {
+				return null;
+			}
+
+			return ! empty( $queried_object->name ) ? $this->context->get_loader( 'post_type' )->load_deferred( $queried_object->name ) : null;
+		}
+
+		// Resolve Users
+		if ( $queried_object instanceof \WP_User ) {
+			// Bail if we're explicitly requesting a different GraphQL type.
+			if ( ! $this->is_valid_node_type( 'User' ) ) {
+				return null;
+			}
+
+			return ! empty( $queried_object->ID ) ? $this->context->get_loader( 'user' )->load_deferred( $queried_object->ID ) : null;
+		}
+
 		/**
-		 * If we're still here, check if we're trying to query a taxonomy term.
+		 * This filter provides a fallback for resolving nodes that were unable to be resolved by NodeResolver::resolve_uri.
+		 *
+		 * This can be used by Extensions to resolve edge cases that are not handled by the core NodeResolver.
+		 *
+		 * @param mixed|null                                    $node             The node, defaults to nothing.
+		 * @param ?string                                       $uri              The uri being searched.
+		 * @param \WP_Term|\WP_Post_Type|\WP_Post|\WP_User|null $queried_object   The queried object, if WP_Query returns one.
+		 * @param \WP_Query                                     $query            The query object.
+		 * @param \WPGraphQL\AppContext                         $content          The app context.
+		 * @param \WP                                           $wp               WP object.
+		 * @param array<string,mixed>|string                    $extra_query_vars Any extra query vars to consider.
 		 */
-		$taxonomies = get_taxonomies( [ 'show_in_graphql' => true ], 'objects' );
-		foreach ( $taxonomies as $tax_object ) {
-			// Resolve a taxonomy term by its slug.
-			if ( isset( $this->wp->query_vars[ $tax_object->query_var ] ) ) {
-				$node = get_term_by( 'slug', $this->wp->query_vars[ $tax_object->query_var ], $tax_object->name );
-
-				return isset( $node->term_id ) ? $this->context->get_loader( 'term' )->load_deferred( $node->term_id ) : null;
-			}
-		}
-
-		return $node;
+		return apply_filters( 'graphql_post_resolve_uri', $node, $uri, $queried_object, $query, $this->context, $this->wp, $extra_query_vars );
 	}
 
 	/**
@@ -269,8 +310,8 @@ class NodeResolver {
 	 *
 	 * Mimics WP::parse_request()
 	 *
-	 * @param string $uri
-	 * @param array|string $extra_query_vars
+	 * @param string                     $uri
+	 * @param array<string,mixed>|string $extra_query_vars
 	 *
 	 * @return string|null The parsed uri.
 	 */
@@ -279,9 +320,12 @@ class NodeResolver {
 		$parsed_url = wp_parse_url( $uri );
 
 		if ( false === $parsed_url ) {
-			graphql_debug( __( 'Cannot parse provided URI', 'wp-graphql' ), [
-				'uri' => $uri,
-			] );
+			graphql_debug(
+				__( 'Cannot parse provided URI', 'wp-graphql' ),
+				[
+					'uri' => $uri,
+				]
+			);
 			return null;
 		}
 
@@ -291,8 +335,8 @@ class NodeResolver {
 			$home_url = wp_parse_url( home_url() );
 
 			/**
-			 * @var array $home_url
-			 * @var array $site_url
+			 * @var array<string,mixed> $home_url
+			 * @var array<string,mixed> $site_url
 			 */
 			if ( ! in_array(
 				$parsed_url['host'],
@@ -302,9 +346,12 @@ class NodeResolver {
 				],
 				true
 			) ) {
-				graphql_debug( __( 'Cannot return a resource for an external URI', 'wp-graphql' ), [
-					'uri' => $uri,
-				] );
+				graphql_debug(
+					__( 'Cannot return a resource for an external URI', 'wp-graphql' ),
+					[
+						'uri' => $uri,
+					]
+				);
 				return null;
 			}
 		}
@@ -322,10 +369,8 @@ class NodeResolver {
 		 */
 		global $wp_rewrite;
 
-
 		$this->wp->query_vars = [];
 		$post_type_query_vars = [];
-
 
 		if ( is_array( $extra_query_vars ) ) {
 			$this->wp->query_vars = &$extra_query_vars;
@@ -340,11 +385,9 @@ class NodeResolver {
 
 		// Fetch the rewrite rules.
 		$rewrite = $wp_rewrite->wp_rewrite_rules();
-
-		$error = '404';
 		if ( ! empty( $rewrite ) ) {
 			// If we match a rewrite rule, this will be cleared.
-			$error                   = null;
+			$error                   = '404';
 			$this->wp->did_permalink = true;
 
 			$pathinfo         = ! empty( $uri ) ? $uri : '';
@@ -412,7 +455,6 @@ class NodeResolver {
 						preg_match( "#^$match#", $request_match, $matches ) ||
 						preg_match( "#^$match#", urldecode( $request_match ), $matches )
 					) {
-
 						if ( $wp_rewrite->use_verbose_page_rules && preg_match( '/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch ) ) {
 							// This is a verbose page match, let's check to be sure about it.
 							$page = get_page_by_path( $matches[ $varmatch[1] ] ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_page_by_path_get_page_by_path
@@ -438,16 +480,23 @@ class NodeResolver {
 				}
 			}
 
-			if ( ! empty( $this->wp->matched_rule ) ) {
+			if ( ! empty( $this->wp->matched_rule ) && $this->wp->matched_rule !== $this->route ) {
 				// Trim the query of everything up to the '?'.
 				$query = preg_replace( '!^.+\?!', '', $query );
 
 				// Substitute the substring matches into the query.
-				$query = addslashes( \WP_MatchesMapRegex::apply( $query, $matches ) );
+				$query = addslashes( \WP_MatchesMapRegex::apply( $query, $matches ) ); // @phpstan-ignore-line
+
+				$this->wp->matched_query = $query;
 
 				// Parse the query.
 				parse_str( $query, $perma_query_vars );
 
+				// If we're processing a 404 request, clear the error var since we found something.
+				// @phpstan-ignore-next-line
+				if ( '404' == $error ) { // phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual
+					unset( $error );
+				}
 			}
 		}
 
@@ -464,7 +513,6 @@ class NodeResolver {
 		 */
 		$this->wp->public_query_vars = apply_filters( 'query_vars', $this->wp->public_query_vars );
 
-
 		foreach ( get_post_types( [ 'show_in_graphql' => true ], 'objects' )  as $post_type => $t ) {
 			/** @var \WP_Post_Type $t */
 			if ( $t->query_var ) {
@@ -473,7 +521,6 @@ class NodeResolver {
 		}
 
 		foreach ( $this->wp->public_query_vars as $wpvar ) {
-
 			$parsed_query = [];
 			if ( isset( $parsed_url['query'] ) ) {
 				parse_str( $parsed_url['query'], $parsed_query );
@@ -508,7 +555,7 @@ class NodeResolver {
 		}
 
 		// Convert urldecoded spaces back into '+'.
-		foreach ( get_taxonomies( [ 'show_in_graphql' => true ], 'objects' ) as $taxonomy => $t ) {
+		foreach ( get_taxonomies( [ 'show_in_graphql' => true ], 'objects' ) as $t ) {
 			if ( $t->query_var && isset( $this->wp->query_vars[ $t->query_var ] ) ) {
 				$this->wp->query_vars[ $t->query_var ] = str_replace( ' ', '+', $this->wp->query_vars[ $t->query_var ] );
 			}
@@ -539,10 +586,15 @@ class NodeResolver {
 			$this->wp->query_vars['error'] = $error;
 		}
 
+		// if the parsed url is ONLY a query, unset the pagename query var
+		if ( isset( $this->wp->query_vars['pagename'], $parsed_url['query'] ) && ( $parsed_url['query'] === $this->wp->query_vars['pagename'] ) ) {
+			unset( $this->wp->query_vars['pagename'] );
+		}
+
 		/**
 		 * Filters the array of parsed query variables.
 		 *
-		 * @param array $query_vars The array of requested query variables.
+		 * @param array<string,mixed> $query_vars The array of requested query variables.
 		 *
 		 * @since 2.1.0
 		 */
@@ -554,5 +606,61 @@ class NodeResolver {
 		do_action_ref_array( 'parse_request', [ &$this->wp ] );
 
 		return $uri;
+	}
+
+	/**
+	 * Checks if the node type is set in the query vars and, if so, whether it matches the node type.
+	 *
+	 * @param string $node_type The node type to check.
+	 */
+	protected function is_valid_node_type( string $node_type ): bool {
+		return ! isset( $this->wp->query_vars['nodeType'] ) || $this->wp->query_vars['nodeType'] === $node_type;
+	}
+
+	/**
+	 * Resolves the home page.
+	 *
+	 * If the homepage is a static page, return the page, otherwise we return the Posts `ContentType`.
+	 *
+	 * @todo Replace `ContentType` with an `Archive` type.
+	 */
+	protected function resolve_home_page(): ?Deferred {
+		$page_id       = get_option( 'page_on_front', 0 );
+		$show_on_front = get_option( 'show_on_front', 'posts' );
+
+		// If the homepage is a static page, return the page.
+		if ( 'page' === $show_on_front && ! empty( $page_id ) ) {
+			$page = get_post( $page_id );
+
+			if ( empty( $page ) ) {
+				return null;
+			}
+
+			return $this->context->get_loader( 'post' )->load_deferred( $page->ID );
+		}
+
+		// If the homepage is set to latest posts, we need to make sure not to resolve it when when for other types.
+		if ( ! $this->is_valid_node_type( 'ContentType' ) ) {
+			return null;
+		}
+
+		// We dont have an 'Archive' type, so we resolve to the ContentType.
+		return $this->context->get_loader( 'post_type' )->load_deferred( 'post' );
+	}
+
+	/**
+	 * Checks if the URI is a comment URI and, if so, returns the comment ID.
+	 *
+	 * @param string $uri The URI to check.
+	 */
+	protected function maybe_parse_comment_uri( string $uri ): ?int {
+		$comment_match = [];
+		// look for a #comment-{$id} anywhere in the uri.
+		if ( preg_match( '/#comment-(\d+)/', $uri, $comment_match ) ) {
+			$comment_id = absint( $comment_match[1] );
+			return ! empty( $comment_id ) ? $comment_id : null;
+		}
+
+		return null;
 	}
 }

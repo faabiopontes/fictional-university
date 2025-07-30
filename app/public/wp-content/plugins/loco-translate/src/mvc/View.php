@@ -1,8 +1,9 @@
-<?php /** @noinspection PhpMultipleClassesDeclarationsInOneFile */
+<?php
 
 /**
  * View renderer
  * @property-read string $_content
+ * @property-read string|null $_trash
  */
 class Loco_mvc_View implements IteratorAggregate {
 
@@ -13,7 +14,7 @@ class Loco_mvc_View implements IteratorAggregate {
     
     /**
      * View that is decorating current view
-     * @var Loco_mvc_View
+     * @var self
      */
     private $parent;
     
@@ -38,7 +39,6 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * @internal
-     * @param array
      */
     public function __construct( array $args = [] ){
         $this->scope = new Loco_mvc_ViewParams( $args );
@@ -48,10 +48,9 @@ class Loco_mvc_View implements IteratorAggregate {
     
     /**
      * Change base path for template paths
-     * @param string path relative to current directory
-     * @return Loco_mvc_View 
+     * @param string $path relative to current directory
      */
-    public function cd( $path ){
+    public function cd( string $path ):self {
         if( $path && '/' === substr($path,0,1) ){
             $this->cwd = untrailingslashit( loco_plugin_root().'/tpl'.$path );
         }
@@ -75,10 +74,8 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Render error screen HTML
-     * @param Loco_error_Exception
-     * @return string
      */
-    public static function renderError( Loco_error_Exception $e ){
+    public static function renderError( Loco_error_Exception $e ):string {
         $view = new Loco_mvc_View;
         try {
             $view->set( 'error', $e );
@@ -93,10 +90,9 @@ class Loco_mvc_View implements IteratorAggregate {
     /**
      * Make this view a child of another template. i.e. decorate this with that.
      * Parent will have access to original argument scope, but separate from now on
-     * @param string
-     * @return Loco_mvc_View the parent view
+     * @return self the parent view
      */
-    private function extend( $tpl ){
+    private function extend( string $tpl ):self {
         $this->parent = new Loco_mvc_View;
         $this->parent->cwd = $this->cwd;
         $this->parent->setTemplate( $tpl );
@@ -106,10 +102,8 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * After start is called any captured output will be placed in the named variable
-     * @param string
-     * @return void
      */
-    private function start( $name ){
+    private function start( string $name ):void {
         $this->stop();
         $this->scope[$name] = null;
         $this->block = $name;
@@ -128,7 +122,6 @@ class Loco_mvc_View implements IteratorAggregate {
                 $content = $this->scope[$b].$content;
             }
             $this->scope[$b] = new _LocoViewBuffer($content);
-            $this->block = null;
         }
         $this->block = '_trash';
     }
@@ -145,40 +138,40 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * @internal
-     * @param string
      * @return mixed
      */
-    public function __get( $prop ){
+    public function __get( string $prop ){
         return $this->has($prop) ? $this->get($prop) : null;
     }
 
 
     /**
-     * @param string
+     * @param string $prop
      * @return bool
      */
-    public function has( $prop ){
+    public function has( string $prop ):bool {
         return $this->scope->offsetExists($prop);
     }
 
 
     /**
      * Get property after checking with self::has
-     * @param string
+     * @param string $prop
      * @return mixed
      */
-    public function get( $prop ){
+    public function get( string $prop ){
         return $this->scope[$prop];
     }
 
 
     /**
      * Set a view argument
-     * @param string
-     * @param mixed
+     * @param string $prop
+     * @param mixed $value
+     *
      * @return Loco_mvc_View
      */
-    public function set( $prop, $value ){
+    public function set( string $prop, $value ):self {
         $this->scope[$prop] = $value;
         return $this;
     }
@@ -187,12 +180,11 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Main entry to rendering complete template
-     * @param string template name excluding extension
-     * @param array extra arguments to set in view scope
-     * @param Loco_mvc_View parent view rendering this view
-     * @return string
+     * @param string $tpl template name excluding extension
+     * @param array|null $args extra arguments to set in view scope
+     * @param self|null $parent parent view rendering this view
      */
-    public function render( $tpl, array $args = null, Loco_mvc_View $parent = null ){
+    public function render( string $tpl, ?array $args = null, ?Loco_mvc_View $parent = null ):string {
         if( $this->block ){
             return $this->fork()->render( $tpl, $args, $this );
         }
@@ -217,7 +209,7 @@ class Loco_mvc_View implements IteratorAggregate {
      * Do actual render of currently validated template path
      * @return string content not captured in sub-blocks
      */
-    private function buffer(){
+    private function buffer():string {
         $this->start('_trash');
         $this->execTemplate( $this->template );
         $this->stop();
@@ -236,9 +228,9 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Set current template
-     * @param string path tro template, excluding file extension
+     * @param string $tpl Path to template, excluding file extension
      */
-    public function setTemplate( $tpl ){
+    public function setTemplate( string $tpl ):void {
         $file = new Loco_fs_File( $tpl.'.php' );
         $file->normalize( $this->cwd );
         if( ! $file->exists() ){
@@ -250,10 +242,7 @@ class Loco_mvc_View implements IteratorAggregate {
     }
 
 
-    /**
-     * @return Loco_mvc_View
-     */
-    private function fork(){
+    private function fork():self {
         $view = new Loco_mvc_View;
         $view->cwd = $this->cwd;
         $view->scope = clone $this->scope;
@@ -264,10 +253,8 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Do actual runtime template include
-     * @param string
-     * @return void
      */
-    private function execTemplate( $template ){
+    private function execTemplate( string $template ):void {
         $params = $this->scope;
         extract( $params->getArrayCopy() );
         include $template;
@@ -276,11 +263,10 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Link generator
-     * @param string page route, e.g. "config"
-     * @param array optional page arguments
-     * @return Loco_mvc_ViewParams
+     * @param string $route page route, e.g. "config"
+     * @param array $args optional page arguments
      */
-    public function route( $route, array $args = [] ){
+    public function route( string $route, array $args = [] ):Loco_mvc_ViewParams {
         return new Loco_mvc_ViewParams(  [
             'href' => Loco_mvc_AdminRouter::generate( $route, $args ),
         ] );
@@ -289,10 +275,8 @@ class Loco_mvc_View implements IteratorAggregate {
 
     /**
      * Shorthand for `echo esc_html( sprintf( ...`
-     * @param string
-     * @return string
      */
-    private static function e( $text ){
+    private static function e( string $text ):string {
         if( 1 < func_num_args() ){
             $args = func_get_args();
             $text = call_user_func_array( 'sprintf', $args );

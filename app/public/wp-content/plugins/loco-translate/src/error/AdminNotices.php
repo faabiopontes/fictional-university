@@ -27,13 +27,45 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
         return self::$singleton;
     }
 
-    
+
     /**
-     * @param Loco_error_Exception
+     * Enable temporary buffering of PHP errors, reducing error reporting to debug level.
+     * Call restore_error_handler to stop capturing.
+     * @param int $level PHP error level bit mask, e.g. E_WARNING
+     * @return void
+     */
+    public static function capture( $level ){
+        set_error_handler( [__CLASS__,'handle_error'], $level );
+    }
+
+
+    /**
+     * @internal
+     * @param int $errno
+     * @param string $errstr
+     */
+    public static function handle_error( $errno, $errstr /*$errfile, $errline*/ ){
+        if( $errno & (E_ERROR|E_USER_ERROR) ){
+            return false;
+        }
+        $label = $errno & (E_WARNING|E_USER_WARNING) ? 'Warning' : 'Notice';
+        self::debug( '[PHP '.$label.'] '.$errstr );
+        return true;
+    }
+
+
+    /**
+     * @param Loco_error_Exception $error
      * @return Loco_error_Exception
      */
     public static function add( Loco_error_Exception $error ){
         $notices = self::get();
+        // Skip repeated error messages in same stack
+        foreach( $notices->errors as $previous ){
+            if( $error->isIdentical($previous) ){
+                return $previous;
+            }
+        }
         // if exception wasn't thrown we have to do some work to establish where it was invoked
         if( __FILE__ === $error->getRealFile() ){
             $error->setCallee(1);
@@ -62,7 +94,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
 
     /**
      * Raise a success message
-     * @param string
+     * @param string $message
      * @return Loco_error_Exception
      */
     public static function success( $message ){
@@ -73,7 +105,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
 
     /**
      * Raise a failure message
-     * @param string
+     * @param string $message
      * @return Loco_error_Exception
      */
     public static function err( $message ){
@@ -84,7 +116,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
 
     /**
      * Raise a warning message
-     * @param string
+     * @param string $message
      * @return Loco_error_Exception
      */
     public static function warn( $message ){
@@ -95,7 +127,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
 
     /**
      * Raise a generic info message
-     * @param string
+     * @param string $message
      * @return Loco_error_Exception
      */
     public static function info( $message ){
@@ -106,7 +138,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
 
     /**
      * Raise a debug notice, if debug is enabled
-     * @param string
+     * @param string $message
      * @return Loco_error_Debug
      */
     public static function debug( $message ){
@@ -123,7 +155,7 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
      */
     public static function destroy(){
         $notices = self::$singleton;
-        if( $notices instanceof  Loco_error_AdminNotices ){
+        if( $notices instanceof Loco_error_AdminNotices ){
             $buffer = $notices->errors;
             $notices->errors = [];
             self::$singleton = null;
@@ -133,10 +165,9 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
     }
 
 
-
     /**
-     * Destroy and return all serialized notices, suitable for ajax response 
-     * @return array
+     * @codeCoverageIgnore 
+     * @deprecated Since PHP 5.4 there is no need to cast array via calls to jsonSerialize
      */
     public static function destroyAjax(){
         $data = [];
@@ -182,7 +213,6 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
             $e->logCli();
         }
         $this->errors = [];
-        
     }
 
 
@@ -222,6 +252,25 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
     public function __destruct(){
         $this->inline = false;
         $this->flush();
+        // handle situation where test case will have lost the buffer
+        if( $this->errors && 'cli' === PHP_SAPI ){
+            throw new RuntimeException('Notices not flushed before destruction');
+        }
+    }
+
+
+    /**
+     * @param int $level
+     * @return Loco_error_Exception[]
+     */
+    public function filter( $level ){
+        $e = [];
+        foreach( $this->errors as $error ){
+            if( $error->getLevel() <= $level ){
+                $e[] = $error;
+            }
+        }
+        return $e;
     }
 
 
@@ -232,12 +281,17 @@ class Loco_error_AdminNotices extends Loco_hooks_Hookable {
         if( class_exists('WP_CLI',false) ){
             $this->flushCli();
         }
-        else if( ! loco_doing_ajax() ){
+        else if( loco_doing_ajax() ){
+            $this->errors = [];
+        }
+        else if( 'cli' !== PHP_SAPI ){
             $this->flushHtml();
         }
+        // else probably in unit test and not properly handled, leave significant errors in buffer
         else {
-            $this->errors = [];
-        }   
+            $this->errors = $this->filter( Loco_error_Exception::LEVEL_WARNING );
+        }
+        return $this;
     }
 
 }

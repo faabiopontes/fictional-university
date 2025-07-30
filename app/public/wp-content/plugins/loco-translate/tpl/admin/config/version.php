@@ -6,7 +6,7 @@ $this->extend('../layout');
 
     // Loco Translate version:
     if( $params->has('update') ):?> 
-    <div class="notice inline notice-warning">
+    <div class="panel panel-warning">
         <h3 class="has-icon">
             <?php self::e( __('Version %s','loco-translate'), $version )?> 
         </h3>
@@ -20,7 +20,7 @@ $this->extend('../layout');
     </div><?php
 
     elseif( $params->has('devel') ):?> 
-    <div class="notice inline notice-debug">
+    <div class="panel panel-debug">
         <h3 class="has-icon">
             <?php self::e( __('Version %s','loco-translate'), $version )?> 
         </h3>
@@ -30,7 +30,7 @@ $this->extend('../layout');
     </div><?php
 
     else:?> 
-    <div class="notice inline notice-success">
+    <div class="panel panel-success">
         <h3 class="has-icon">
             <?php self::e( __('Version %s','loco-translate'), $version)?> 
         </h3>
@@ -43,7 +43,7 @@ $this->extend('../layout');
     
     // PHP version (warnings only)
     if( $params->has('phpupdate') ):?> 
-    <div class="notice inline notice-warning">
+    <div class="panel panel-warning">
         <h3 class="has-icon"><?php 
             // translators: Where %s is the full version number of PHP
             self::e( __('PHP %s','loco-translate'), $phpversion )?> 
@@ -62,7 +62,7 @@ $this->extend('../layout');
 
     // WordPress version (warnings only)
     if( $params->has('wpupdate') ):?>
-        <div class="notice inline notice-warning">
+        <div class="panel panel-warning">
         <h3 class="has-icon"><?php
             // translators: Where %s is the full version number of WordPress
             self::e( __('WordPress %s','loco-translate'), $wpversion )?> 
@@ -71,7 +71,7 @@ $this->extend('../layout');
             self::e( __('Your version of %1$s is out of date. We recommend you upgrade to at least v%2$s, but preferably to the latest stable version.','loco-translate'),'WordPress',$wpupdate)?> 
         </p>
         <p class="submit">
-            <a class="button button-primary" href="<?php echo esc_url($wpupdate_href)?>"><?php esc_html_e('Update Now','default')?></a>
+            <a class="button button-primary" href="<?php echo esc_url($wpupdate_href)?>"><?php esc_html_e('Update Now','loco-translate')?></a>
             <a class="button-link has-icon icon-ext" target="_blank" href="https://wordpress.org/download/releases/"><?php esc_html_e( __('Install manually','loco-translate') )?></a>
         </p>
         </div><?php

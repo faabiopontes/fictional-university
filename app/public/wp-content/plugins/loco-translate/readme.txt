@@ -1,14 +1,14 @@
 === Loco Translate ===
 Contributors: timwhitlock
-Tags: translation, translators, localization, localisation, l10n, i18n, Gettext, PO, MO, productivity, multilingual, internationalization
-Requires at least: 5.2
-Requires PHP: 5.6.20
-Tested up to: 6.0.0
-Stable tag: 2.6.2
+Tags: translation, language, multilingual, l10n, i18n
+Requires at least: 6.6
+Requires PHP: 7.4
+Tested up to: 6.8.1
+Stable tag: 2.8.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Translate WordPress plugins and themes directly in your browser
+Translate WordPress plugins and themes directly in your browser. Versatile PO file editor with integrated AI translation providers.
 
 
 == Description ==
@@ -20,11 +20,12 @@ It also provides Gettext/localization tools for developers, such as extracting s
 Features include:
 
 * Built-in translation editor within WordPress admin
-* Integration with translation APIs including DeepL, Google, Microsoft and Lecto AI
+* Integration with translation APIs including DeepL, Google, Lecto, Microsoft and OpenAI.
 * Create and update language files directly in your theme or plugin
 * Extraction of translatable strings from your source code
 * Native MO file compilation without the need for Gettext on your system
-* Support for PO features including comments, references and plural forms
+* JSON (Jed) file compilation compatible with WordPress script localization
+* Support for standard PO features including comments, references and plural forms
 * PO source view with clickable source code references
 * Protected language directory for saving custom translations
 * Configurable PO file backups with diff and restore capability
@@ -85,7 +86,7 @@ If you decide to submit a bug report please post enough [relevant detail](https:
 
 = Is my data protected? =
 
-We don't collect your data or snoop on you. See the [plugin privacy notice](https://localise.biz/wordpress/plugin/privacy).
+We don't collect your data or track you. See the [plugin privacy notice](https://localise.biz/wordpress/plugin/privacy).
 
 
 == Screenshots ==
@@ -99,6 +100,114 @@ We don't collect your data or snoop on you. See the [plugin privacy notice](http
 
 
 == Changelog ==
+
+= 2.8.0 =
+* Bugfix for PHP 8.0 compatibility
+* Dropped support for PHP < 7.4
+
+= 2.7.3 =
+* PHP 8.4 compatibility
+* Bumped WordPress compatibility to 6.8.1
+
+= 2.7.2 =
+* DeepL client moved to back end, because CORS 
+* Rolled in support for OpenAI / ChatGPT translation
+* Workaround for JSON file references with no line number
+* Bumped WordPress compatibility to 6.7.2
+
+= 2.7.1 =
+* Debug logging of unloaded domains reduced to a summary
+
+= 2.7.0 =
+* Raised minimum requirements to WordPress 6.6
+* Minimum PHP version becomes 7.2.24 as per WordPress 6.6
+* Locale-filtered bundle list now searches for base language
+* Loading helper forcefully removes prematurely loaded text domains
+* Machine translation hooks now have access to message context
+* Persistent UI state for code view and invisible character modes
+
+= 2.6.14 =
+* Critical fix: A relative path passed to `load_textdomain` no longer throws exception.
+
+= 2.6.13 =
+* Fix for direct calls to load_textdomain with custom paths
+* This resolves a regression in 2.6.12
+
+= 2.6.12 =
+* Major fix to custom load_textdomain loader. Works when original file is absent
+* Fixed bug in template comparison when JSON files need to be merged
+* CSS fixes including reinstating of unsaved "star" icon
+* Domain listener fixed for JIT loading
+* Bumped WordPress compatibility to 6.7
+
+= 2.6.11 =
+* Removed accidental console trace
+* Bumped WordPress compatibility to 6.6.0
+* Added lang_dir_for_domain fix to handle system file absence
+
+= 2.6.10 =
+* Added loco_api_provider_{id} filter
+* JSON compiler observes configured .js aliases
+* Fixed a missing security check - thanks Nosa Shandy
+* Added .blade.php tokenizer hack
+* Bumped WordPress compatibility to 6.5.4
+
+= 2.6.9 =
+* Rolled back load helper changes
+* Moved debug messages to action hooks
+* String debugger improvements
+
+= 2.6.8 =
+* Added string debugger
+* Added Zip download button instead of MO
+* Added debug messages about premature domain loading
+* Added warning when system translations not installed
+* Compiler avoids writing empty JSON translation files
+* UI promotes PO copy over msginit/xgettext routes
+* Populating msginit fields when copying a PO
+* Bumped WordPress compatibility to 6.5.3
+
+= 2.6.7 =
+* WordPress 6.5.0 compatible
+* Support for performant translation files in PHP format
+* Added block.json and theme.json extraction
+* Added theme pattern files to php string extractor
+* Fixed a bug where unused plural forms were counted as untranslated
+* Replaced CSS .notice with .panel to mitigate nag-blocker problems
+* Removed bundle debug screen (deprecated since 2.6.5)
+* Workaround for absent "source" references in JED files
+* Extension polyfills now restricted to Loco admin screens.
+
+= 2.6.6 =
+* Replaced open_basedir check with error capturing
+
+= 2.6.5 =
+* Added syntax checking function
+* Removed deepl_api_url config. Free API detected from :fx key suffix.
+* Fixed bug in relative path calculations
+* Fixed API suggestions for plural forms
+* Fixed bug clearing unsaved state icons
+* Added total strings count to PO file tables
+* Sharper flags and spinners (@x2 pixel support)
+* Handling upload_tmp_dir values outside of open_basedir
+* Suppressing E_WARNING when testing file is_readable
+* Bundle debug screen is deprecated (moving into Setup)
+* Showing System Diagnostics when debug is off
+* Bumped WordPress compatibility to 6.3.1
+
+= 2.6.4 =
+* Bumped WordPress version to 6.1.1
+* Dropped support for Internet Explorer
+* Updated JavaScript to ECMAScript 6
+* Added `loco_bundle_configured` hook
+* Fixed error icon not clearing after correction
+
+= 2.6.3 =
+* Fixed bug in plural forms comparison
+* Fixed bug generating author theme jsons
+* Fixed errors in bundle debugger
+* Extended cli type argument to filter specific bundle
+* Bumped WordPress version to 6.0.3
 
 = 2.6.2 =
 * Bumped WordPress version to 6.0.0
@@ -468,7 +577,7 @@ We don't collect your data or snoop on you. See the [plugin privacy notice](http
 
 == Upgrade Notice ==
 
-= 2.6.2 =
+= 2.8.0 =
 * Various improvements and bug fixes
 
 

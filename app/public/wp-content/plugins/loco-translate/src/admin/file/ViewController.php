@@ -23,11 +23,30 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
      */
     public function getHelpTabs(){
         return  [
-            __('Overview','default') => $this->viewSnippet('tab-file-view'),
+            __('Overview') => $this->viewSnippet('tab-file-view'),
         ];
     }
-
-
+    
+    
+    private function getUtf8Source( Loco_fs_File $file, LocoPoHeaders $head ){
+        $src = $file->getContents();
+        try {
+            $src = loco_remove_bom( $src, $cs );
+            if( '' === $cs ){
+                $cs = $head->getCharset();
+            }
+            if( '' !== $cs ){
+                $src = loco_convert_utf8($src,$cs,false);
+            }
+        }
+        catch ( Exception $e ){
+            Loco_error_AdminNotices::debug( $e->getMessage() );
+        }
+        return $src;
+    }
+    
+    
+    
     /**
      * {@inheritdoc}
      */
@@ -44,12 +63,14 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
         }
 
         // Establish if file belongs to a configured project
+        $bundle = null;
+        $project = null;
         try {
             $bundle = $this->getBundle();
             $project = $this->getProject();
         }
         catch( Exception $e ){
-            $project = null;
+            Loco_error_AdminNotices::debug( $e->getMessage() );
         }    
             
         // Parse data before rendering, so we know it's a valid Gettext format
@@ -70,9 +91,14 @@ class Loco_admin_file_ViewController extends Loco_admin_file_BaseController {
             return $this->view('admin/file/view-mo' );
         }
         
+        // l10n.php files are unlikely to be encountered without a po or mo, but still..
+        if( 'php'=== $type ){
+            return $this->view('admin/file/view-php', ['phps'=>$file->getContents()] );
+        }
+        
         // else is a PO or POT file 
         $this->enqueueScript('poview');//->enqueueScript('min/highlight');
-        $lines = preg_split('/(?:\\n|\\r\\n?)/', Loco_gettext_Data::ensureUtf8( $file->getContents() ) );
+        $lines = preg_split('/\\n|\\r\\n?/', $this->getUtf8Source( $file, $data->getHeaders() ) );
         $this->set( 'lines', $lines );
         
         // ajax parameters required for pulling reference sources

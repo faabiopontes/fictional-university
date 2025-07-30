@@ -113,9 +113,9 @@ function acf_form_data( $data = array() ) {
  * @date    15/10/13
  * @since   5.0.0
  *
- * @param   int|string $post_id The post id.
- * @param   array      $values An array of values to override $_POST.
- * @return  bool True if save was successful.
+ * @param   integer|string $post_id The post id.
+ * @param   array          $values  An array of values to override $_POST.
+ * @return  boolean True if save was successful.
  */
 function acf_save_post( $post_id = 0, $values = null ) {
 
@@ -155,15 +155,14 @@ function acf_save_post( $post_id = 0, $values = null ) {
  * @date    11/1/19
  * @since   5.7.10
  *
- * @param   int|string $post_id The post id.
+ * @param   integer|string $post_id The post id.
  * @return  void
  */
 function _acf_do_save_post( $post_id = 0 ) {
 
 	// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified elsewhere.
-	// Check and update $_POST data.
-	if ( $_POST['acf'] ) {
-		acf_update_values( $_POST['acf'], $post_id );
+	if ( ! empty( $_POST['acf'] ) ) {
+		acf_update_values( $_POST['acf'], $post_id ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized by WP when saved.
 	}
 	// phpcs:enable WordPress.Security.NonceVerification.Missing
 }

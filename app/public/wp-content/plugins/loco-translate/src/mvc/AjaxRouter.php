@@ -17,8 +17,8 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
 
     /**
      * Generate a GET request URL containing required routing parameters
-     * @param string
-     * @param array
+     * @param string $route
+     * @param array $args
      * @return string
      */
     public static function generate( $route, array $args = [] ){
@@ -66,7 +66,7 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
 
     
     /**
-     * @param string
+     * @param string $route
      * @return string
      */
     private static function routeToClass( $route ){
@@ -85,9 +85,9 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
      */
     public function on_wp_ajax_loco_json(){
         $json = $this->renderAjax();
-	    $this->exitScript( $json,  [
-	        'Content-Type' => 'application/json; charset=UTF-8',
-	    ] );
+        $this->exitScript( $json,  [
+            'Content-Type' => 'application/json; charset=UTF-8',
+        ] );
     }
 
 
@@ -97,6 +97,8 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
      * @codeCoverageIgnore
      */
     public function on_wp_ajax_loco_download(){
+        $file = null;
+        $ext = null;
         $data = $this->renderDownload();
         if( is_string($data) ){
             $path = ( $this->ctrl ? $this->ctrl->get('path') : '' ) or $path = 'error.json';
@@ -105,55 +107,53 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
         }
         else if( $data instanceof Exception ){
             $data = sprintf('%s in %s:%u', $data->getMessage(), basename($data->getFile()), $data->getLine() );
-            $ext = null;
         }
         else {
             $data = (string) $data;
-            $ext = null;
         }
         $mimes =  [
-            'mo'   => 'application/x-gettext-translation',
             'po'   => 'application/x-gettext',
             'pot'  => 'application/x-gettext',
-            'xml'  => 'text/xml',
+            'mo'   => 'application/x-gettext-translation',
+            'php'  => 'application/x-httpd-php-source',
             'json' => 'application/json',
+            'zip'  => 'application/zip',
+            'xml'  => 'text/xml',
         ];
         $headers = [];
-	    if( $ext && isset($mimes[$ext]) ){
+        if( $file instanceof Loco_fs_File && isset($mimes[$ext]) ){
             $headers['Content-Type'] = $mimes[$ext].'; charset=UTF-8';
             $headers['Content-Disposition'] = 'attachment; filename='.$file->basename();
         }
         else {
-	        $headers['Content-Type'] = 'text/plain; charset=UTF-8';
+            $headers['Content-Type'] = 'text/plain; charset=UTF-8';
         }
         $this->exitScript( $data, $headers );
     }
 
 
-	/**
-	 * Exit script before WordPress shutdown, avoids hijacking of exit via wp_die_ajax_handler.
-	 * Also gives us a final chance to check for output buffering problems.
-	 * @codeCoverageIgnore
-	 * @param string
-	 * @param array
-	 */
+    /**
+     * Exit script before WordPress shutdown, avoids hijacking of exit via wp_die_ajax_handler.
+     * Also gives us a final chance to check for output buffering problems.
+     * @codeCoverageIgnore
+     */
     private function exitScript( $str, array $headers ){
-	    try {
+        try {
             do_action('loco_admin_shutdown');
             Loco_output_Buffer::clear();
             $this->buffer = null;
             Loco_output_Buffer::check();
             $headers['Content-Length'] = strlen($str);
             foreach( $headers as $name => $value ){
-                header( $name.': '.$value, true );
+                header( $name.': '.$value );
             }
-	    }
-	    catch( Exception $e ){
-	        Loco_error_AdminNotices::add( Loco_error_Exception::convert($e) );
-	        $str = $e->getMessage();
-	    }
-	    echo $str;
-	    exit(0);
+        }
+        catch( Exception $e ){
+            Loco_error_AdminNotices::add( Loco_error_Exception::convert($e) );
+            $str = $e->getMessage();
+        }
+        echo $str;
+        exit(0);
     }
 
 
@@ -166,6 +166,7 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
             // respond with deferred failure from initAjax
             if( ! $this->ctrl ){
                 $route = isset($_REQUEST['route']) ? $_REQUEST['route'] : '';
+                // translators: Fatal error where %s represents an unexpected value
                 throw new Loco_error_Exception( sprintf( __('Ajax route not found: "%s"','loco-translate'), $route ) );
             }
             // else execute controller to get json output
@@ -175,11 +176,11 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
             }
         }
         catch( Loco_error_Exception $e ){
-            $json = json_encode( [ 'error' => $e->jsonSerialize(), 'notices' => Loco_error_AdminNotices::destroyAjax() ] );
+            $json = json_encode( [ 'error' => $e->jsonSerialize(), 'notices' => Loco_error_AdminNotices::destroy() ] );
         }
         catch( Exception $e ){
             $e = Loco_error_Exception::convert($e);
-            $json = json_encode( [ 'error' => $e->jsonSerialize(), 'notices' => Loco_error_AdminNotices::destroyAjax() ] );
+            $json = json_encode( [ 'error' => $e->jsonSerialize(), 'notices' => Loco_error_AdminNotices::destroy() ] );
         }
         $this->buffer->discard();
         return $json;
@@ -205,7 +206,7 @@ class Loco_mvc_AjaxRouter extends Loco_hooks_Hookable {
         catch( Exception $e ){
             $data = $e;
         }
-	    $this->buffer->discard();
+        $this->buffer->discard();
         return $data;
     }
 

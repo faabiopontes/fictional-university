@@ -14,9 +14,10 @@ use WPGraphQL\Registry\TypeRegistry;
  * @package WPGraphQL
  */
 class WPSchema extends Schema {
-
 	/**
-	 * @var SchemaConfig
+	 * {@inheritDoc}
+	 *
+	 * @var \GraphQL\Type\SchemaConfig
 	 */
 	public $config;
 
@@ -24,7 +25,7 @@ class WPSchema extends Schema {
 	 * Holds the $filterable_config which allows WordPress access to modifying the
 	 * $config that gets passed down to the Executable Schema
 	 *
-	 * @var SchemaConfig|null
+	 * @var \GraphQL\Type\SchemaConfig
 	 * @since 0.0.9
 	 */
 	public $filterable_config;
@@ -32,25 +33,23 @@ class WPSchema extends Schema {
 	/**
 	 * WPSchema constructor.
 	 *
-	 * @param SchemaConfig $config The config for the Schema.
-	 * @param TypeRegistry $type_registry
+	 * @param \GraphQL\Type\SchemaConfig       $config The config for the Schema.
+	 * @param \WPGraphQL\Registry\TypeRegistry $type_registry
 	 *
 	 * @since 0.0.9
 	 */
 	public function __construct( SchemaConfig $config, TypeRegistry $type_registry ) {
-
 		$this->config = $config;
 
 		/**
 		 * Set the $filterable_config as the $config that was passed to the WPSchema when instantiated
 		 *
-		 * @param SchemaConfig $config The config for the Schema.
-		 * @param TypeRegistry $type_registry The WPGraphQL type registry.
+		 * @param \GraphQL\Type\SchemaConfig       $config        The config for the Schema.
+		 * @param \WPGraphQL\Registry\TypeRegistry $type_registry The WPGraphQL type registry.
 		 *
 		 * @since 0.0.9
 		 */
 		$this->filterable_config = apply_filters( 'graphql_schema_config', $config, $type_registry );
 		parent::__construct( $this->filterable_config );
 	}
-
 }

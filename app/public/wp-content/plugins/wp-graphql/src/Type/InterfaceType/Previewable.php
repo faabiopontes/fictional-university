@@ -2,7 +2,6 @@
 
 namespace WPGraphQL\Type\InterfaceType;
 
-use Exception;
 use WPGraphQL\Model\Post;
 use WPGraphQL\Registry\TypeRegistry;
 
@@ -11,32 +10,40 @@ class Previewable {
 	/**
 	 * Adds the Previewable Type to the WPGraphQL Registry
 	 *
-	 * @param TypeRegistry $type_registry
+	 * @param \WPGraphQL\Registry\TypeRegistry $type_registry
 	 *
-	 * @return void
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public static function register_type( TypeRegistry $type_registry ): void {
 		register_graphql_interface_type(
 			'Previewable',
 			[
-				'description' => __( 'Nodes that can be seen in a preview (unpublished) state.', 'wp-graphql' ),
-				'fields'      => [
-					'isPreview'                 => [
-						'type'        => 'Boolean',
-						'description' => __( 'Whether the object is a node in the preview state', 'wp-graphql' ),
-					],
-					'previewRevisionDatabaseId' => [
-						'type'        => 'Int',
-						'description' => __( 'The database id of the preview node', 'wp-graphql' ),
-					],
-					'previewRevisionId'         => [
-						'type'        => 'ID',
-						'description' => __( 'Whether the object is a node in the preview state', 'wp-graphql' ),
-					],
-				],
-				'resolveType' => function ( Post $post ) use ( $type_registry ) {
-
+				'description' => static function () {
+					return __( 'Content that supports a draft preview mode. Allows viewing unpublished changes before they are made publicly available. Previewing unpublished changes requires appropriate permissions.', 'wp-graphql' );
+				},
+				'fields'      => static function () {
+					return [
+						'isPreview'                 => [
+							'type'        => 'Boolean',
+							'description' => static function () {
+								return __( 'Whether the object is a node in the preview state', 'wp-graphql' );
+							},
+						],
+						'previewRevisionDatabaseId' => [
+							'type'        => 'Int',
+							'description' => static function () {
+								return __( 'The database id of the preview node', 'wp-graphql' );
+							},
+						],
+						'previewRevisionId'         => [
+							'type'        => 'ID',
+							'description' => static function () {
+								return __( 'Whether the object is a node in the preview state', 'wp-graphql' );
+							},
+						],
+					];
+				},
+				'resolveType' => static function ( Post $post ) use ( $type_registry ) {
 					$type = 'Post';
 
 					$post_type_object = isset( $post->post_type ) ? get_post_type_object( $post->post_type ) : null;

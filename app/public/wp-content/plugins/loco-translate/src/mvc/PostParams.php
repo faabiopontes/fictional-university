@@ -36,13 +36,14 @@ class Loco_mvc_PostParams extends Loco_mvc_ViewParams {
      * @return bool
      */
     private static function has_magic_quotes(){
+        // phpcs:ignore -- PHP version is checked prior to deprecated function call.
         return version_compare(PHP_VERSION,'7.4','<') && ( get_magic_quotes_gpc() || get_magic_quotes_runtime() );
     }
 
 
     /**
      * Construct clean postdata from current HTTP request
-     * @return Loco_mvc_PostParams
+     * @return self
      */
      public static function create(){
         $post = [];
@@ -65,8 +66,7 @@ class Loco_mvc_PostParams extends Loco_mvc_ViewParams {
      * Construct postdata from a series of value pairs.
      * This is used in tests to simulate how a form is serialized and posted
      * 
-     * @param array
-     * @return Loco_mvc_PostParams
+     * @return self
      */
     public static function fromSerial( array $serial ){
         $pairs = [];
@@ -80,7 +80,7 @@ class Loco_mvc_PostParams extends Loco_mvc_ViewParams {
 
     /**
      * Collapse nested array down to series of scalar forms
-     * @return array
+     * @return string[]
      */
     public function getSerial(){
         $serial = [];

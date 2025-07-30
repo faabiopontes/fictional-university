@@ -31,17 +31,19 @@ class Loco_fs_LocaleFile extends Loco_fs_File {
      */
     public function split(){
         if( is_null($this->suffix) ){
-            $parts = explode('-',$this->filename() );
-            $this->suffix = array_pop($parts);
+            // note that `filename` isn't used here because of double extensions (.l10n.php)
+            $parts = explode('-',$this->basename() );
+            $tail = array_pop($parts);
+            $this->suffix = explode('.',$tail,2)[0];
             // handle script hashes for JSONs only
-            if( 'json' === $this->extension() && preg_match('/^[0-9a-f]{32}$/',$this->suffix) ){
+            if( '.json' === substr($tail,-5) && preg_match('/^[0-9a-f]{32}$/',$this->suffix) ){
                 $this->hash = $this->suffix;
                 $this->suffix = array_pop($parts);
             }
             $this->prefix = implode('-',$parts);
             // handle situations where unsuffixed name is wrongly taken as the prefix
             // e.g. "de.po" is valid but "hello.po" is not. 
-            // There are still some  ambiguous situations, e.g. "foo-bar.po" is valid, but nonsense
+            // There are still some ambiguous situations, e.g. "foo-bar.po" is valid, but nonsense
             if( ! $this->prefix && ! $this->getLocale()->isValid() ){
                 $this->prefix = $this->suffix;
                 $this->suffix = '';
@@ -69,7 +71,7 @@ class Loco_fs_LocaleFile extends Loco_fs_File {
 
 
     /**
-     * @param Loco_locale
+     * @param $locale Loco_locale
      * @return Loco_fs_LocaleFile
      */
     public function cloneLocale( Loco_locale $locale ){
@@ -133,6 +135,5 @@ class Loco_fs_LocaleFile extends Loco_fs_File {
         $info = $this->split();
         return $info[0] && ! $info[1];
     }
-    
-    
+
 }

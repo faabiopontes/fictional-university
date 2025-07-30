@@ -86,10 +86,9 @@ class Loco_error_Exception extends Exception implements JsonSerializable {
 
 
     /**
-     * @param int number of levels up from callee
-     * @return Loco_error_Exception
+     * @param int $depth number of levels up from callee
      */
-    public function setCallee( $depth = 0 ){
+    public function setCallee( int $depth = 0 ):self {
         $stack = debug_backtrace(0);
         $callee = $stack[$depth];
         $this->_file = $callee['file'];
@@ -101,16 +100,16 @@ class Loco_error_Exception extends Exception implements JsonSerializable {
 
     /**
      * Write this error to file regardless of log level
-     * @param Loco_error_Exception
      * @return void
      */
     public function log(){
         $file = new Loco_fs_File( $this->getRealFile() );
         $path = $file->getRelativePath( loco_plugin_root() );
         $text = sprintf('[Loco.%s] "%s" in %s:%u', $this->getType(), $this->getMessage(), $path, $this->getRealLine() );
-        // separate error log in CWD for tests
-        if( defined('LOCO_TEST') && LOCO_TEST ){
+        // separate error log for cli tests
+        if( 'cli' === PHP_SAPI && defined('LOCO_TEST_DATA_ROOT') ){
             error_log( '['.date('c').'] '.$text."\n", 3, 'debug.log' );
+            //fwrite( STDERR, $this->getType().': '.$this->getMessage()."\n" );
         }
         // Else write to default PHP log, but note that WordPress may have set this to wp-content/debug.log.
         // If no `error_log` is set this will send message to the SAPI, so check your httpd/fast-cgi errors too.
@@ -170,22 +169,40 @@ class Loco_error_Exception extends Exception implements JsonSerializable {
      */
     #[ReturnTypeWillChange]
     public function jsonSerialize(){
-        return  [
+        $a = [
             'code' => $this->getCode(),
             'type' => $this->getType(),
-            'class' => get_class($this),
             'title' => $this->getTitle(),
             'message' => $this->getMessage(),
-            //'file' => str_replace( ABSPATH, '', $this->getRealFile() ),
-            //'line' => $this->getRealLine()
         ];
+        /*if( loco_debugging() ){
+            $a['file'] = str_replace( ABSPATH, '', $this->getRealFile() );
+            $a['line'] = $this->getRealLine();
+            $a = self::recurseJsonSerialize($a,$this);
+        }*/
+        return $a;
     }
 
 
     /**
+     * @param string[] $a
+     * @return array modified from $a
+     * @codeCoverageIgnore
+     */
+    private static function recurseJsonSerialize( array $a, Exception $child ){
+        $a['class'] = get_class($child);
+        $a['trace'] = $child->getTraceAsString();
+        $parent = $child->getPrevious();
+        if( $parent instanceof Exception ){
+            $a['previous'] = self::recurseJsonSerialize([],$parent);
+        }
+        return $a;
+    }
+
+    /**
      * Push navigation links into error. Use for help pages etc..
-     * @param string
-     * @param string
+     * @param string $href
+     * @param string $text
      * @return Loco_error_Exception
      */
     public function addLink( $href, $text ){
@@ -204,7 +221,7 @@ class Loco_error_Exception extends Exception implements JsonSerializable {
 
     /**
      * Convert generic exception to one of ours
-     * @param Exception original error
+     * @param Exception $e original error
      * @return Loco_error_Exception
      */
     public static function convert( Exception $e ){
@@ -240,4 +257,14 @@ class Loco_error_Exception extends Exception implements JsonSerializable {
     }
     
     
+    /**
+     * Check if passed exception is effectively the same as this one
+     * @return bool
+     */
+    public function isIdentical( Exception $other ){
+        return $this->getCode() === $other->getCode()
+            && $this->getMessage() === $other->getMessage()
+            && $this->getType() === ( $other instanceof Loco_error_Exception ? $other->getType() : 0 );
+    }
+
 }
